@@ -1865,6 +1865,248 @@ html { scroll-behavior: smooth; }
     background-clip: padding-box;
 }
 
+/* ──── Quick actions strip — Dashboard top toolbar ─────────────────────── */
+.qa-strip {
+    display: block;
+    margin: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-3) var(--sp-3);
+    background:
+        linear-gradient(90deg, rgba(221,194,105,.04) 0%, transparent 30%),
+        linear-gradient(180deg, rgba(20,16,8,.4) 0%, rgba(10,8,6,.6) 100%);
+    border: 1px solid rgba(221,194,105,.12);
+    border-radius: 14px;
+    position: relative;
+}
+.qa-strip::before {
+    content: "ATALHOS DO DIA";
+    position: absolute;
+    top: -8px;
+    left: 18px;
+    padding: 0 8px;
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .28em;
+    color: var(--mint);
+    background: var(--ink-00);
+}
+/* Buttons inside qa-strip — sober but clearly clickable */
+.qa-strip + div [data-testid="stBaseButton-secondary"],
+.qa-strip [data-testid="stBaseButton-secondary"] {
+    background: rgba(221,194,105,.04) !important;
+    border: 1px solid rgba(221,194,105,.18) !important;
+    color: var(--ice) !important;
+    font-family: var(--font-body) !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    letter-spacing: .02em !important;
+    padding: 10px 14px !important;
+    transition: background .2s, border-color .2s, transform .15s;
+}
+.qa-strip + div [data-testid="stBaseButton-secondary"]:hover,
+.qa-strip [data-testid="stBaseButton-secondary"]:hover {
+    background: rgba(221,194,105,.10) !important;
+    border-color: rgba(221,194,105,.4) !important;
+    transform: translateY(-1px);
+}
+.qa-strip + div [data-testid="stBaseButton-primary"],
+.qa-strip [data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%) !important;
+    border: none !important;
+    color: var(--ink-00) !important;
+    font-weight: 700 !important;
+    font-size: 12.5px !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 4px 14px -4px rgba(221,194,105,.5) !important;
+    transition: transform .15s, box-shadow .15s;
+}
+.qa-strip + div [data-testid="stBaseButton-primary"]:hover,
+.qa-strip [data-testid="stBaseButton-primary"]:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.5),
+        0 8px 22px -4px rgba(221,194,105,.7) !important;
+}
+
+/* ──── Empty state ré-skin: a guided invitation, not a blank page ──────── */
+.empty-stage {
+    margin: var(--sp-5) auto var(--sp-6);
+    max-width: 720px;
+    padding: var(--sp-6) var(--sp-5);
+    text-align: center;
+    background:
+        radial-gradient(600px 280px at 50% 0%, rgba(221,194,105,.10), transparent 70%),
+        linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    border-top: 1px solid rgba(221,194,105,.32);
+    border-bottom: 1px solid rgba(221,194,105,.14);
+    position: relative;
+}
+.empty-stage__eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: var(--sp-3);
+}
+.empty-stage__title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80;
+    font-weight: 320;
+    font-size: clamp(28px, 3.6vw, 42px);
+    line-height: 1.05;
+    color: var(--ice);
+    margin: 0 0 var(--sp-3);
+    letter-spacing: -.018em;
+}
+.empty-stage__title em {
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.empty-stage__deck {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 320;
+    font-size: 14.5px;
+    color: var(--fog);
+    line-height: 1.6;
+    max-width: 50ch;
+    margin: 0 auto var(--sp-4);
+}
+.empty-stage__steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-4);
+    margin-top: var(--sp-5);
+    text-align: left;
+}
+.empty-stage__step {
+    padding-left: var(--sp-3);
+    border-left: 1px solid rgba(221,194,105,.25);
+}
+.empty-stage__step-num {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 32;
+    font-size: 18px;
+    color: var(--mint);
+    margin-bottom: 4px;
+    letter-spacing: .04em;
+}
+.empty-stage__step-title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 20, "SOFT" 30;
+    font-weight: 460;
+    font-size: 14px;
+    color: var(--ice);
+    margin-bottom: 4px;
+}
+.empty-stage__step-body {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--smoke);
+    line-height: 1.55;
+}
+
+/* ──── Sidebar navigation grouped by purpose ───────────────────────────── */
+.nav-wrap {
+    margin: var(--sp-2) 0 var(--sp-4);
+}
+.nav-group {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: var(--sp-3) 8px 6px 4px;
+    margin-top: var(--sp-3);
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(221,194,105,.10);
+    position: relative;
+}
+.nav-group:first-child { margin-top: var(--sp-2); }
+.nav-group__roman {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 24, "SOFT" 60;
+    font-weight: 320;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--mint);
+    min-width: 28px;
+    letter-spacing: .04em;
+}
+.nav-group__meta { line-height: 1.1; }
+.nav-group__title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 24, "SOFT" 30;
+    font-weight: 420;
+    font-size: 13px;
+    color: var(--ice);
+    letter-spacing: -.005em;
+    line-height: 1.1;
+}
+.nav-group__caption {
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-top: 3px;
+}
+
+/* Nav buttons — sober link-row look (NOT chunky CTA chips) */
+.nav-wrap [data-testid="stBaseButton-secondary"],
+.nav-wrap [data-testid="stBaseButton-primary"] {
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-left: 2px solid transparent !important;
+    border-radius: 0 6px 6px 0 !important;
+    color: var(--fog) !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding: 6px 12px !important;
+    margin: 1px 0 !important;
+    font-family: var(--font-body) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: -.005em !important;
+    transition: background .2s, border-color .2s, color .2s, padding-left .2s;
+    box-shadow: none !important;
+    min-height: 30px !important;
+    height: auto !important;
+}
+.nav-wrap [data-testid="stBaseButton-secondary"]:hover {
+    background: rgba(221,194,105,.05) !important;
+    border-left-color: rgba(221,194,105,.45) !important;
+    color: var(--ice) !important;
+    padding-left: 16px !important;
+}
+.nav-wrap [data-testid="stBaseButton-primary"] {
+    background: linear-gradient(90deg, rgba(221,194,105,.16) 0%, rgba(221,194,105,.04) 60%, transparent 100%) !important;
+    border-left-color: var(--mint) !important;
+    color: var(--ice) !important;
+    font-weight: 600 !important;
+    padding-left: 16px !important;
+}
+.nav-wrap [data-testid="stBaseButton-primary"]::after {
+    content: "›";
+    margin-left: auto;
+    color: var(--mint);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 18px;
+    opacity: .85;
+}
+.nav-wrap [data-testid="stBaseButton-primary"]:hover {
+    background: linear-gradient(90deg, rgba(221,194,105,.22) 0%, rgba(221,194,105,.06) 60%, transparent 100%) !important;
+}
+
 /* ──── Sidebar: gold-frame plate around the logo ────────────────────────── */
 .patabrava-mark {
     position: relative;
@@ -3576,30 +3818,64 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="lbl-section">Navegacao</div>', unsafe_allow_html=True)
-    page = st.radio("nav", [
-        "&#128202;  Dashboard",
-        "&#128293;  HOT Focus",
-        "&#127919;  Oportunidades",
-        "&#128203;  CRM",
-        "&#128240;  Atividade",
-        "&#128205;  Mapa & BI",
-        "&#128268;  Pre-Market",
-        "&#129518;  Sistema",
-        "&#9881;  Motor",
-        "&#128228;  Exportar",
-    ], label_visibility="collapsed")
+    # ── Navigation: grouped by purpose, not flat ──────────────────────────
+    # Each group represents a phase of the operator's day.
+    #   I.  Caça        — find leads (top of funnel)
+    #   II. Venda       — work leads (middle of funnel)
+    #   III.Inteligência — analyse (strategic)
+    #   IV. Motor       — operations (back-office)
+    NAV_GROUPS = [
+        ("I",   "Caça",         "Encontrar leads", [
+            ("&#128202;  Dashboard",      "Vista do dia"),
+            ("&#128293;  HOT Focus",      "Acção imediata"),
+            ("&#128268;  Pre-Market",     "Antes do mercado"),
+        ]),
+        ("II",  "Venda",        "Trabalhar leads", [
+            ("&#127919;  Oportunidades",  "Stock completo"),
+            ("&#128203;  CRM",            "Pipeline de negociação"),
+            ("&#128240;  Atividade",      "Cronologia"),
+        ]),
+        ("III", "Inteligência", "Análise estratégica", [
+            ("&#128205;  Mapa & BI",      "Geografia & funil"),
+        ]),
+        ("IV",  "Motor",        "Bastidores", [
+            ("&#129518;  Sistema",        "Saúde operacional"),
+            ("&#9881;  Motor",            "Pipeline interno"),
+            ("&#128228;  Exportar",       "Trocas de dados"),
+        ]),
+    ]
 
-    st.divider()
-    st.markdown('<div class="lbl-section">Origem dos dados</div>', unsafe_allow_html=True)
-    _DATA_MODES = ["Todos", "&#128994; Apenas reais", "&#128993; Apenas demo"]
-    data_mode = st.radio("data_mode", _DATA_MODES, label_visibility="collapsed")
+    # Initialise current page in session state
+    if "__page" not in st.session_state:
+        st.session_state["__page"] = NAV_GROUPS[0][3][0][0]
+    page = st.session_state["__page"]
 
-    st.divider()
-    st.markdown('<div class="lbl-section">Contacto</div>', unsafe_allow_html=True)
-    _CONTACT_MODES = ["Todos", "&#128222; Com telefone", "&#128241; Só telemóvel real", "&#9993; Com email", "&#9989; Qualquer contacto", "&#10060; Sem contacto"]
-    contact_mode = st.radio("contact_mode", _CONTACT_MODES, label_visibility="collapsed")
-    exclude_relay = st.checkbox("Excluir relay/OLX (6xx)", value=False, help="Remove números temporários OLX que expiram quando o anúncio sai")
+    st.markdown('<div class="nav-wrap">', unsafe_allow_html=True)
+    for roman, group_name, group_caption, items in NAV_GROUPS:
+        st.markdown(
+            f'<div class="nav-group">'
+            f'  <div class="nav-group__roman">{roman}</div>'
+            f'  <div class="nav-group__meta">'
+            f'    <div class="nav-group__title">{group_name}</div>'
+            f'    <div class="nav-group__caption">{group_caption}</div>'
+            f'  </div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        for label, hint in items:
+            is_active = (label == page)
+            btn_label = label  # already includes emoji entity
+            # Use type="primary" for active so we can style it via CSS
+            if st.button(
+                btn_label,
+                key=f"nav_{label}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+                help=hint,
+            ):
+                st.session_state["__page"] = label
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
     st.markdown('<div class="lbl-section">Pesquisa</div>', unsafe_allow_html=True)
@@ -3702,23 +3978,33 @@ with st.sidebar:
                 st.rerun()
 
     st.divider()
-    st.markdown('<div class="lbl-section">Filtros</div>', unsafe_allow_html=True)
-    ZONES = ["Todas as zonas", "Lisboa", "Cascais", "Sintra", "Almada", "Seixal", "Sesimbra"]
-    sel_zone = st.selectbox("Zona", ZONES)
-    TYPOS = ["Todas as tipologias", "T0", "T1", "T2", "T3", "T4+", "Moradia"]
-    sel_typology = st.selectbox("Tipologia", TYPOS)
-    _OWNER_MODES = ["Todos", "&#128100; Particular (FSBO)", "&#127970; Agência", "&#127959; Promotor", "&#10067; Desconhecido"]
-    _owner_default = _OWNER_MODES.index(st.session_state.get("__preset_owner", "Todos")) \
-        if st.session_state.get("__preset_owner") in _OWNER_MODES else 0
-    owner_mode = st.selectbox("Tipo vendedor", _OWNER_MODES, index=_owner_default)
-    _LEAD_TYPE_MODES = ["Todos", "&#127968; FSBO (venda)", "&#128273; FRBO (arrendamento)", "&#128101; Active Owner", "&#127970; Agência", "&#128679; Promotor"]
-    lead_type_mode = st.selectbox("Tipo de lead", _LEAD_TYPE_MODES)
-    _CSOURCE_MODES = ["Todos", "Direto", "Agência / Site", "Cross-portal"]
-    csource_mode = st.selectbox("Origem do contacto", _CSOURCE_MODES)
-    score_floor = st.slider(
-        "Pontuacao minima", 0, 100,
-        st.session_state.get("__preset_score", 0),
-    )
+    with st.expander("⚙  Refinamento avançado", expanded=False):
+        st.markdown('<div class="lbl-section" style="margin-top:0;">Origem dos dados</div>', unsafe_allow_html=True)
+        _DATA_MODES = ["Todos", "&#128994; Apenas reais", "&#128993; Apenas demo"]
+        data_mode = st.radio("data_mode", _DATA_MODES, label_visibility="collapsed")
+
+        st.markdown('<div class="lbl-section">Contacto</div>', unsafe_allow_html=True)
+        _CONTACT_MODES = ["Todos", "&#128222; Com telefone", "&#128241; Só telemóvel real", "&#9993; Com email", "&#9989; Qualquer contacto", "&#10060; Sem contacto"]
+        contact_mode = st.radio("contact_mode", _CONTACT_MODES, label_visibility="collapsed")
+        exclude_relay = st.checkbox("Excluir relay/OLX (6xx)", value=False, help="Remove números temporários OLX que expiram quando o anúncio sai")
+
+        st.markdown('<div class="lbl-section">Geografia & tipologia</div>', unsafe_allow_html=True)
+        ZONES = ["Todas as zonas", "Lisboa", "Cascais", "Sintra", "Almada", "Seixal", "Sesimbra"]
+        sel_zone = st.selectbox("Zona", ZONES)
+        TYPOS = ["Todas as tipologias", "T0", "T1", "T2", "T3", "T4+", "Moradia"]
+        sel_typology = st.selectbox("Tipologia", TYPOS)
+        _OWNER_MODES = ["Todos", "&#128100; Particular (FSBO)", "&#127970; Agência", "&#127959; Promotor", "&#10067; Desconhecido"]
+        _owner_default = _OWNER_MODES.index(st.session_state.get("__preset_owner", "Todos")) \
+            if st.session_state.get("__preset_owner") in _OWNER_MODES else 0
+        owner_mode = st.selectbox("Tipo vendedor", _OWNER_MODES, index=_owner_default)
+        _LEAD_TYPE_MODES = ["Todos", "&#127968; FSBO (venda)", "&#128273; FRBO (arrendamento)", "&#128101; Active Owner", "&#127970; Agência", "&#128679; Promotor"]
+        lead_type_mode = st.selectbox("Tipo de lead", _LEAD_TYPE_MODES)
+        _CSOURCE_MODES = ["Todos", "Direto", "Agência / Site", "Cross-portal"]
+        csource_mode = st.selectbox("Origem do contacto", _CSOURCE_MODES)
+        score_floor = st.slider(
+            "Pontuação mínima", 0, 100,
+            st.session_state.get("__preset_score", 0),
+        )
     st.divider()
     if st.button("Actualizar oportunidades", use_container_width=True):
         st.cache_data.clear()
@@ -3888,6 +4174,77 @@ if page == "&#128202;  Dashboard":
         """,
         unsafe_allow_html=True,
     )
+
+    # ── Quick actions strip — the operator's "next step" toolbar ──────────
+    # 4 columns of compact CTAs that map to the most common daily actions.
+    # All buttons hook into existing flows (page change / pipeline run / export).
+    st.markdown('<div class="qa-strip">', unsafe_allow_html=True)
+    qa1, qa2, qa3, qa4 = st.columns(4)
+    with qa1:
+        if st.button("🔥  Ir para HOT Focus", key="qa_hot", use_container_width=True, type="primary"):
+            st.session_state["__page"] = "&#128293;  HOT Focus"
+            st.rerun()
+    with qa2:
+        if st.button("⟳  Atualizar dados agora", key="qa_run", use_container_width=True):
+            with st.spinner("A executar pipeline (scrape · process · score)…"):
+                try:
+                    from pipeline.runner import PipelineRunner
+                    from scoring.scorer import Scorer
+                    r = PipelineRunner().run_full()
+                    Scorer().score_all_pending()
+                    st.cache_data.clear()
+                    st.success(f"✓  {r.leads_created} novos · {r.leads_updated} actualizados")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+    with qa3:
+        if st.button("📋  Exportar lista HOT", key="qa_export", use_container_width=True):
+            try:
+                from reports.generator import ReportGenerator
+                path = ReportGenerator().export_csv(score_min=70)
+                st.toast(f"✓  Ficheiro: {path}", icon="📋")
+            except Exception as e:
+                st.error(f"Erro: {e}")
+    with qa4:
+        if st.button("📊  Mapa & inteligência", key="qa_map", use_container_width=True):
+            st.session_state["__page"] = "&#128205;  Mapa & BI"
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Empty state — guided onboarding when there's no real data yet ────
+    if total == 0:
+        st.markdown(
+            """
+            <section class="empty-stage">
+              <div class="empty-stage__eyebrow">Pronto para começar</div>
+              <h2 class="empty-stage__title">Lança o <em>motor</em>.</h2>
+              <p class="empty-stage__deck">A base de dados está vazia — ainda não há leads para
+                mostrar. O processo é simples: o motor varre os portais, identifica proprietários
+                directos e traz contactos com telefone para a tua agenda.</p>
+              <div class="empty-stage__steps">
+                <div class="empty-stage__step">
+                  <div class="empty-stage__step-num">i</div>
+                  <div class="empty-stage__step-title">Atualiza dados</div>
+                  <div class="empty-stage__step-body">Carrega <em>"Atualizar dados agora"</em>
+                  acima. O scrape leva ~5–10 min na primeira vez.</div>
+                </div>
+                <div class="empty-stage__step">
+                  <div class="empty-stage__step-num">ii</div>
+                  <div class="empty-stage__step-title">Vai a HOT Focus</div>
+                  <div class="empty-stage__step-body">Os leads mais quentes do dia aparecem
+                  ranked por urgência. Liga primeiro aos do topo.</div>
+                </div>
+                <div class="empty-stage__step">
+                  <div class="empty-stage__step-num">iii</div>
+                  <div class="empty-stage__step-title">Move no CRM</div>
+                  <div class="empty-stage__step-body">Cada lead contactado avança no funil
+                  — visitas, propostas, ganhos.</div>
+                </div>
+              </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # KPI metrics
     k1, k2, k3, k4, k5 = st.columns(5)
