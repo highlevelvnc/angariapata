@@ -48,21 +48,36 @@ STATE_PATH = ROOT / "data" / "run_state.json"
 
 @dataclass
 class RunInfo:
-    pid:          Optional[int]   = None
-    alive:        bool            = False
-    started_at:   Optional[float] = None
-    elapsed_s:    float           = 0.0
-    sources:      list[str]       = None
-    zones:        list[str]       = None
-    log_path:     Optional[str]   = None
-    log_tail:     str             = ""
-    zones_done:   int             = 0
-    zones_total:  int             = 0
-    listings:     int             = 0
-    last_zone:    Optional[str]   = None
-    blocked_hits: int             = 0
-    finished_at:  Optional[float] = None
-    finished_ok:  Optional[bool]  = None         # None=running, True/False=done
+    pid:           Optional[int]   = None
+    alive:         bool            = False
+    started_at:    Optional[float] = None
+    elapsed_s:     float           = 0.0
+    sources:       list[str]       = None
+    zones:         list[str]       = None
+    log_path:      Optional[str]   = None
+    log_tail:      str             = ""
+    zones_done:    int             = 0
+    zones_total:   int             = 0
+    listings:      int             = 0
+    last_zone:     Optional[str]   = None
+    blocked_hits:  int             = 0
+    finished_at:   Optional[float] = None
+    finished_ok:   Optional[bool]  = None         # None=running, True/False=done
+    leads_before:  int             = 0           # snapshot BEFORE the run
+    leads_after:   int             = 0           # snapshot AFTER the run
+    leads_new:     int             = 0           # diff (after - before, capped at 0)
+
+
+@dataclass
+class PreflightResult:
+    """Output of preflight() — used by the dashboard to decide whether to
+    actually launch. ``ok=False`` means we should NOT spend the operator's
+    next 30 minutes on a doomed run."""
+    ok:               bool
+    reason:           str             = ""        # short tag: "ip_blocked", "ip_unknown", "low_battery"…
+    blocked_portals:  list[str]       = None
+    public_ip:        Optional[str]   = None
+    suggestion:       str             = ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -104,14 +119,89 @@ def is_running() -> bool:
     return bool(pid) and _pid_alive(pid)
 
 
-def start(sources: list[str] | None = None, zones: list[str] | None = None) -> RunInfo:
+def _snapshot_leads_count() -> int:
+    """Best-effort lead count snapshot — used to compute the leads_new diff.
+    Failures are silent: we just record 0 and the diff banner shows nothing
+    rather than crashing the launcher."""
+    try:
+        # Defer the import — keeps run_state import-cheap on cold paths.
+        from sqlalchemy import text                  # type: ignore
+        from storage.database import get_db
+        with get_db() as db:
+            return int(db.execute(text("SELECT COUNT(*) FROM leads WHERE is_demo=0")).scalar() or 0)
+    except Exception:
+        return 0
+
+
+def preflight() -> PreflightResult:
+    """Cheap network sanity check — should we even bother to start?
+
+    Probes (cached) the per-portal block status. If both portals
+    return 200, the run can proceed. If any portal is 403/429, we
+    refuse the launch and return an actionable suggestion.
+
+    Idempotent: takes <2 seconds when probes are cached, ~5s on a
+    cold call.
+    """
+    try:
+        from utils.network_status import overall_status
+    except Exception:
+        # If network_status isn't importable for some reason, fail open.
+        return PreflightResult(ok=True, reason="probe_unavailable")
+
+    snap = overall_status()
+    blocked = snap["blocked_portals"]
+    if blocked:
+        return PreflightResult(
+            ok=False,
+            reason="ip_blocked",
+            blocked_portals=blocked,
+            public_ip=snap["ip"].ip,
+            suggestion=(
+                "Switch to another NordVPN PT server, or toggle mobile "
+                "data off/on for a fresh CGNAT IP. Then click 'Check now' "
+                "on the network status widget and try again."
+            ),
+        )
+    return PreflightResult(
+        ok=True,
+        reason="clean",
+        blocked_portals=[],
+        public_ip=snap["ip"].ip,
+    )
+
+
+def start(sources: list[str] | None = None, zones: list[str] | None = None,
+          force: bool = False) -> RunInfo:
     """Fork-and-detach a ``python main.py run`` subprocess.
 
     If a run is already in flight, this is a no-op (returns existing
-    status). The caller should not assume start() always launches.
+    status). When ``force=False`` (default), runs preflight() first
+    and refuses to launch on a blocked IP — the dashboard surfaces the
+    rejection reason. ``force=True`` skips preflight (useful for
+    explicit retries from a CLI).
     """
     if is_running():
         return status()
+
+    if not force:
+        pf = preflight()
+        if not pf.ok:
+            # Persist the rejection so the dashboard can render it.
+            state = {
+                "pid":          None,
+                "started_at":   None,
+                "sources":      sources or [],
+                "zones":        zones or [],
+                "log_path":     None,
+                "finished_at":  time.time(),
+                "finished_ok":  False,
+                "preflight":    asdict(pf),
+                "leads_before": _snapshot_leads_count(),
+                "leads_after":  _snapshot_leads_count(),
+            }
+            _write_state(state)
+            return status()
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     ts = time.strftime("%Y%m%d_%H%M%S")
@@ -134,16 +224,32 @@ def start(sources: list[str] | None = None, zones: list[str] | None = None) -> R
     )
 
     state = {
-        "pid":         proc.pid,
-        "started_at":  time.time(),
-        "sources":     sources or [],
-        "zones":       zones or [],
-        "log_path":    str(log_path),
-        "finished_at": None,
-        "finished_ok": None,
+        "pid":          proc.pid,
+        "started_at":   time.time(),
+        "sources":      sources or [],
+        "zones":        zones or [],
+        "log_path":     str(log_path),
+        "finished_at":  None,
+        "finished_ok":  None,
+        "leads_before": _snapshot_leads_count(),
+        "leads_after":  0,
+        "preflight":    None,
     }
     _write_state(state)
     return status()
+
+
+def get_preflight() -> Optional[PreflightResult]:
+    """Read the last persisted preflight rejection (if any). Used by the
+    dashboard to render an actionable banner under the run-done strip."""
+    s = _read_state()
+    pf = s.get("preflight")
+    if not pf:
+        return None
+    try:
+        return PreflightResult(**pf)
+    except Exception:
+        return None
 
 
 def stop() -> bool:
@@ -227,23 +333,30 @@ def status() -> RunInfo:
     """
     s = _read_state()
     info = RunInfo()
-    info.pid          = s.get("pid")
-    info.started_at   = s.get("started_at")
-    info.sources      = s.get("sources") or []
-    info.zones        = s.get("zones")   or []
-    info.log_path     = s.get("log_path")
-    info.finished_at  = s.get("finished_at")
-    info.finished_ok  = s.get("finished_ok")
-    info.alive        = bool(info.pid) and _pid_alive(info.pid)
-    info.elapsed_s    = (time.time() - (info.started_at or time.time())) if info.started_at else 0
+    info.pid           = s.get("pid")
+    info.started_at    = s.get("started_at")
+    info.sources       = s.get("sources") or []
+    info.zones         = s.get("zones")   or []
+    info.log_path      = s.get("log_path")
+    info.finished_at   = s.get("finished_at")
+    info.finished_ok   = s.get("finished_ok")
+    info.leads_before  = int(s.get("leads_before") or 0)
+    info.leads_after   = int(s.get("leads_after") or 0)
+    info.alive         = bool(info.pid) and _pid_alive(info.pid)
+    info.elapsed_s     = (time.time() - (info.started_at or time.time())) if info.started_at else 0
 
     # Auto-finalise: if the PID is dead but we never got finished_at,
-    # mark it finished now — the dashboard should stop showing "running".
+    # mark it finished now and snapshot leads_after so the diff banner
+    # can render.
     if not info.alive and info.pid and not info.finished_at:
-        s["finished_at"] = time.time()
-        s["finished_ok"] = None  # we don't know; tail will tell us
+        s["finished_at"]  = time.time()
+        s["finished_ok"]  = None  # we don't know; tail will tell us
+        s["leads_after"]  = _snapshot_leads_count()
         _write_state(s)
         info.finished_at = s["finished_at"]
+        info.leads_after = int(s["leads_after"])
+
+    info.leads_new = max(0, info.leads_after - info.leads_before)
 
     if not info.log_path:
         return info

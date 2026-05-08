@@ -381,6 +381,16 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "run.done.dismiss":           {"pt": "Fechar",                        "en": "Dismiss"},
     "run.starting":               {"pt": "A arrancar o motor…",           "en": "Starting the engine…"},
     "run.already_running":        {"pt": "Já há um run em curso.",        "en": "A run is already in flight."},
+    "run.preflight.rejected":     {"pt": "Lançamento recusado",           "en": "Launch refused"},
+    "run.preflight.ip_blocked":   {"pt": "O IP {ip} está bloqueado em {portals}.",
+                                    "en": "IP {ip} is blocked on {portals}."},
+    "run.preflight.suggestion":   {"pt": "Muda de servidor NordVPN ou alterna os dados móveis. "
+                                          "Volta a clicar quando o widget de rede ficar verde.",
+                                    "en": "Switch NordVPN server or toggle mobile data. "
+                                          "Try again when the network widget turns green."},
+    "run.preflight.force":        {"pt": "Forçar mesmo assim",            "en": "Force launch anyway"},
+    "run.diff.new":               {"pt": "🟢 {n} leads novos hoje",       "en": "🟢 {n} new leads today"},
+    "run.diff.zero":              {"pt": "Sem leads novos.",              "en": "No new leads."},
 }
 
 
@@ -5041,20 +5051,53 @@ if page == "&#128202;  Dashboard":
 
     elif _run_info.finished_at and (time.time() - _run_info.finished_at) < 60:
         # ── DONE: status banner for 60 seconds, then auto-collapse ────────
-        ok = _run_info.finished_ok is True
-        eyebrow = t("run.done.eyebrow.ok") if ok else t("run.done.eyebrow.ko")
-        klass = "run-done" if ok else "run-done run-done--ko"
-        st.markdown(
-            f'<div class="{klass}">'
-            f'  <div class="run-done__eyebrow">{eyebrow}</div>'
-            f'  <div class="run-done__row">'
-            f'    <span><b>{_run_info.zones_done}</b> zonas</span>'
-            f'    <span><b>{_run_info.listings}</b> anúncios</span>'
-            f'    <span>{int(_run_info.elapsed_s // 60)} min</span>'
-            f'  </div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+        # Also handles the "preflight rejected" case — we persist the
+        # rejection in the same state file so it surfaces here.
+        _pf = _run_state.get_preflight()
+        if _pf and not _pf.ok and _pf.reason == "ip_blocked":
+            portals_str = ", ".join(_pf.blocked_portals or [])
+            st.markdown(
+                f'<div class="run-done run-done--ko">'
+                f'  <div class="run-done__eyebrow">⛔  {t("run.preflight.rejected")}</div>'
+                f'  <div class="run-done__row" style="font-style:italic;">'
+                f'    {t("run.preflight.ip_blocked", ip=_pf.public_ip or "?", portals=portals_str)}'
+                f'  </div>'
+                f'  <div class="run-done__row" style="font-size:11px;color:var(--smoke);">'
+                f'    {t("run.preflight.suggestion")}'
+                f'  </div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button(t("run.preflight.force"), key="run_force_btn"):
+                _run_state.start(force=True)
+                st.rerun()
+        else:
+            ok = _run_info.finished_ok is True
+            eyebrow = t("run.done.eyebrow.ok") if ok else t("run.done.eyebrow.ko")
+            klass = "run-done" if ok else "run-done run-done--ko"
+            diff_html = ""
+            if _run_info.leads_new:
+                diff_html = (
+                    f'<span style="color:#86d4a8;font-weight:600;">'
+                    f'{t("run.diff.new", n=_run_info.leads_new)}</span>'
+                )
+            elif ok:
+                diff_html = (
+                    f'<span style="color:var(--smoke);">'
+                    f'{t("run.diff.zero")}</span>'
+                )
+            st.markdown(
+                f'<div class="{klass}">'
+                f'  <div class="run-done__eyebrow">{eyebrow}</div>'
+                f'  <div class="run-done__row">'
+                f'    <span><b>{_run_info.zones_done}</b> zonas</span>'
+                f'    <span><b>{_run_info.listings}</b> anúncios</span>'
+                f'    <span>{int(_run_info.elapsed_s // 60)} min</span>'
+                f'    {diff_html}'
+                f'  </div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ── Quick actions strip — the operator's "next step" toolbar ──────────
     # 4 columns of compact CTAs that map to the most common daily actions.
