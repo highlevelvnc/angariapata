@@ -1243,6 +1243,46 @@ _CSS_CARDS = """<style>
     color: var(--slate);
 }
 
+/* ──── Maison MINI — compact editorial hero for sub-pages ───────────────── */
+.maison--mini {
+    position: relative;
+    padding: var(--sp-5) var(--sp-5) var(--sp-4);
+    margin: var(--sp-2) 0 var(--sp-5);
+    overflow: hidden;
+    border-top:    1px solid rgba(221,194,105,.32);
+    border-bottom: 1px solid rgba(221,194,105,.14);
+    background:
+        radial-gradient(700px 320px at 95% -30%, rgba(221,194,105,.08), transparent 70%),
+        linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+}
+.maison--mini::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 22%; bottom: 22%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent 0%, var(--mint) 50%, transparent 100%);
+    opacity: .5;
+}
+.maison--mini .maison-eyebrow {
+    margin-bottom: var(--sp-2);
+}
+.maison--mini .maison-title {
+    font-size: clamp(28px, 3.6vw, 44px);
+    margin-bottom: var(--sp-2);
+}
+.maison--mini .maison-deck {
+    font-size: clamp(14px, 1.2vw, 16px);
+    margin-top: var(--sp-2);
+    max-width: 72ch;
+}
+.maison--mini .maison-byline {
+    margin-top: var(--sp-3);
+}
+.maison--mini .maison-eyebrow,
+.maison--mini .maison-title,
+.maison--mini .maison-deck,
+.maison--mini .maison-byline { animation-duration: .7s; }
+
 /* ──── Maison watermark + double-rule + drop cap upgrades ────────────────── */
 .maison-watermark {
     position: absolute;
@@ -1329,6 +1369,289 @@ _CSS_CARDS = """<style>
     -webkit-text-fill-color: transparent;
 }
 
+/* ──── Lot page — magazine spread header for a single lead detail ───────── */
+.lot-page {
+    margin: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    background:
+        linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    border-top: 1px solid rgba(221,194,105,.32);
+    border-bottom: 1px solid rgba(221,194,105,.14);
+    position: relative;
+    overflow: hidden;
+}
+.lot-page::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, transparent 0%, var(--mint) 50%, transparent 100%);
+}
+.lot-page__eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: var(--sp-2);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+}
+.lot-page__sep { opacity: .6; color: var(--smoke); margin: 0 -2px; }
+.lot-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    margin-left: var(--sp-2);
+}
+.lot-chip--fsbo {
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 100%);
+    color: var(--ink-00);
+    box-shadow: 0 4px 14px -4px rgba(221,194,105,.5);
+}
+.lot-chip--agency {
+    background: rgba(168,134,26,.12);
+    color: var(--mint-d);
+    border: 1px solid rgba(168,134,26,.3);
+}
+.lot-page__title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 32, "SOFT" 30;
+    font-weight: 420;
+    font-size: clamp(20px, 2.4vw, 28px);
+    color: var(--ice);
+    letter-spacing: -0.012em;
+    line-height: 1.25;
+    margin-bottom: var(--sp-3);
+    max-width: 60ch;
+}
+.lot-page__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-5);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-3);
+}
+.lot-page__price {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80;
+    font-weight: 320;
+    font-size: clamp(36px, 4.2vw, 56px);
+    line-height: 1;
+    letter-spacing: -.02em;
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-feature-settings: "lnum","tnum";
+}
+.lot-spec {
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--smoke);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+.lot-spec b {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 480;
+    font-size: 1.4em;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ice);
+    margin-right: 2px;
+}
+.lot-page__rule {
+    height: 1px;
+    margin: var(--sp-3) 0 var(--sp-4);
+    background: linear-gradient(90deg, var(--mint) 0%, transparent 70%);
+    opacity: .4;
+}
+.lot-cta {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-3);
+}
+.lot-cta__call {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    color: var(--ink-00) !important;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-decoration: none !important;
+    border: none !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 8px 22px -8px rgba(221,194,105,.6);
+    transition: transform .2s, box-shadow .2s;
+}
+.lot-cta__call:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.5),
+        0 12px 30px -8px rgba(221,194,105,.85);
+}
+.lot-cta__wa {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    color: var(--mint-l) !important;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 14;
+    font-size: 13.5px;
+    text-decoration: none !important;
+    border-bottom: 1px dotted rgba(221,194,105,.5) !important;
+    transition: color .2s, border-color .2s;
+}
+.lot-cta__wa:hover {
+    color: var(--ice) !important;
+    border-bottom-color: var(--mint) !important;
+}
+.lot-page__source {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .28em;
+    color: var(--slate);
+    text-transform: uppercase;
+}
+
+/* ──── Editorial footer — appears once at the bottom of every page ───────── */
+.maison-footer {
+    margin: var(--sp-7) auto var(--sp-5);
+    padding: var(--sp-5) var(--sp-4) var(--sp-3);
+    text-align: center;
+    border-top: 1px solid rgba(221,194,105,.18);
+    position: relative;
+}
+.maison-footer::before {
+    /* parallel hairline above for double-rule effect */
+    content: "";
+    position: absolute;
+    left: 30%; right: 30%;
+    top: -5px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%, rgba(221,194,105,.45) 50%, transparent 100%);
+}
+.maison-footer__mark {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 32, "SOFT" 80;
+    font-weight: 320;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--mint);
+    letter-spacing: -.01em;
+    margin-bottom: var(--sp-3);
+}
+.maison-footer__row {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--slate);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-3);
+}
+.maison-footer__row > span:not(:last-child)::after {
+    content: "·";
+    margin-left: var(--sp-3);
+    color: var(--mint);
+    opacity: .8;
+}
+.maison-footer__addr {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 14;
+    font-weight: 320;
+    font-size: 12.5px;
+    color: var(--smoke);
+    letter-spacing: .01em;
+    line-height: 1.55;
+    max-width: 60ch;
+    margin: 0 auto;
+}
+
+/* ──── Ambient gold dust — slow CSS-only floating particles ──────────────── */
+/*
+ *  Six gold motes drift across the viewport in independent loops. Pure CSS
+ *  (no JS), low opacity, mix-blend-mode "screen" so they only brighten
+ *  pixels they pass over — they never look like dirt on a screen.
+ *  Sits above background but below content (z-index 0 vs default static).
+ */
+.dust {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+.dust__mote {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--mint-l) 0%, var(--mint) 45%, transparent 70%);
+    opacity: 0;
+    mix-blend-mode: screen;
+    filter: blur(.4px);
+    will-change: transform, opacity;
+}
+@keyframes dust-drift-a {
+    0%   { transform: translate(0, 100vh) scale(.6); opacity: 0; }
+    8%   { opacity: .55; }
+    50%  { transform: translate(40px, 50vh) scale(1); opacity: .8; }
+    92%  { opacity: .35; }
+    100% { transform: translate(-25px, -8vh) scale(.7); opacity: 0; }
+}
+@keyframes dust-drift-b {
+    0%   { transform: translate(0, 100vh) scale(.5); opacity: 0; }
+    10%  { opacity: .4; }
+    50%  { transform: translate(-60px, 45vh) scale(.9); opacity: .7; }
+    90%  { opacity: .3; }
+    100% { transform: translate(20px, -10vh) scale(.5); opacity: 0; }
+}
+.dust__mote:nth-child(1) { left:  8%;  width: 3px; height: 3px; animation: dust-drift-a 38s linear infinite;        animation-delay: 0s;   }
+.dust__mote:nth-child(2) { left: 22%;  width: 5px; height: 5px; animation: dust-drift-b 44s linear infinite;        animation-delay: 6s;   }
+.dust__mote:nth-child(3) { left: 41%;  width: 2px; height: 2px; animation: dust-drift-a 32s linear infinite;        animation-delay: 14s;  }
+.dust__mote:nth-child(4) { left: 58%;  width: 4px; height: 4px; animation: dust-drift-b 50s linear infinite;        animation-delay: 22s;  }
+.dust__mote:nth-child(5) { left: 73%;  width: 3px; height: 3px; animation: dust-drift-a 41s linear infinite;        animation-delay: 9s;   }
+.dust__mote:nth-child(6) { left: 88%;  width: 5px; height: 5px; animation: dust-drift-b 36s linear infinite;        animation-delay: 18s;  }
+
+@media (prefers-reduced-motion: reduce) {
+    .dust__mote { animation: none !important; opacity: 0 !important; }
+}
+
 /* ──── Editorial polish: selection, scrollbar, focus rings ──────────────── */
 ::selection {
     background: rgba(221,194,105,.32);
@@ -1379,27 +1702,77 @@ _CSS_CARDS = """<style>
 /* Apply alongside .card to upgrade a lead row to lot-style presentation. */
 .lot {
     position: relative;
-    padding: var(--sp-4) var(--sp-5) var(--sp-4) var(--sp-6);
+    padding: 32px var(--sp-5) var(--sp-4) var(--sp-6);
     border-left: 2px solid var(--mint);
     border-radius: 4px 14px 14px 4px;
     background:
         linear-gradient(90deg, rgba(221,194,105,.06) 0%, transparent 18%),
         linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    margin-bottom: 8px;
 }
 .lot::before {
     /* "Lot Nº" label — small caps */
     content: "LOT " counter(lot, decimal-leading-zero);
     position: absolute;
-    top: 12px;
+    top: 10px;
     left: 18px;
     font-family: var(--font-mono);
     font-size: 9.5px;
     font-weight: 500;
-    letter-spacing: .25em;
-    color: var(--smoke);
+    letter-spacing: .28em;
+    color: var(--mint);
+    opacity: .8;
+}
+.lot::after {
+    /* Right-side micro asterisk before chips */
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 18px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 8px rgba(221,194,105,.6);
+    opacity: .7;
 }
 .lot-list { counter-reset: lot; }
 .lot { counter-increment: lot; }
+
+.lot-title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 24, "SOFT" 30;
+    font-weight: 420;
+    font-size: 1.08rem;
+    color: var(--ice);
+    letter-spacing: -0.012em;
+    line-height: 1.25;
+    margin-bottom: 3px;
+}
+.lot-meta {
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--smoke);
+}
+.lot-meta em {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 14, "SOFT" 60;
+    font-weight: 400;
+    font-size: 0.84rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--mint-l);
+}
+.lot-days {
+    font-family: var(--font-mono) !important;
+    font-size: 0.66rem !important;
+    letter-spacing: .12em !important;
+    color: var(--slate) !important;
+}
 
 /* Hover ornaments — small gold corner ticks on cards */
 .card {
@@ -2059,6 +2432,18 @@ section[data-testid="stSidebar"] > div > div > div:last-child {
 
 st.markdown(_CSS_UX, unsafe_allow_html=True)
 
+# ─── Ambient gold-dust layer ────────────────────────────────────────────────
+# Six gold motes drifting across the viewport. Sits below content, never
+# intercepts pointer events. Fixed-position so it persists across scrolls.
+st.markdown(
+    '<div class="dust" aria-hidden="true">'
+    '<span class="dust__mote"></span><span class="dust__mote"></span>'
+    '<span class="dust__mote"></span><span class="dust__mote"></span>'
+    '<span class="dust__mote"></span><span class="dust__mote"></span>'
+    '</div>',
+    unsafe_allow_html=True,
+)
+
 
 # ─── CSS: micro-interactions + delight layer ─────────────────────────────────
 # Final flourish — focused on the small details that make the UI feel
@@ -2290,6 +2675,72 @@ def render_photo_gallery(lead) -> None:
         st.image(img, use_container_width=True)
 
 
+def _render_lead_magazine_header(lead) -> None:
+    """Editorial "magazine spread" header for a lead — appears above the
+    tabbed extras. Conceptually: an auction catalogue lot description.
+
+    Layout:
+      [eyebrow: TIPOLOGIA · ZONA · LOT N°]
+      [price huge italic Fraunces gold gradient]   [spec strip]
+      [hairline rule]
+      [phone CTA chip + WhatsApp link]
+    """
+    if not lead:
+        return
+    typ   = (getattr(lead, "typology", None) or "—").upper()
+    zone  = (getattr(lead, "zone", None) or "—").upper()
+    price = getattr(lead, "price", None)
+    area  = getattr(lead, "area_m2", None)
+    beds  = getattr(lead, "bedrooms", None)
+    baths = getattr(lead, "bathrooms", None)
+    days  = getattr(lead, "days_on_market", 0) or 0
+    src   = (getattr(lead, "source", None) or "—").upper()
+    own   = (getattr(lead, "owner_type", None) or "")
+    phone = getattr(lead, "contact_phone", None)
+    score = getattr(lead, "score", 0) or 0
+
+    own_chip = ""
+    if own == "fsbo":
+        own_chip = '<span class="lot-chip lot-chip--fsbo">PROPRIETÁRIO DIRECTO</span>'
+    elif own == "agency":
+        own_chip = '<span class="lot-chip lot-chip--agency">AGÊNCIA</span>'
+
+    price_str = f"{int(price):,} €".replace(",", " ") if price else "Preço sob consulta"
+
+    spec_items = []
+    if area:  spec_items.append(f'<span><b>{int(area)}</b> m²</span>')
+    if beds:  spec_items.append(f'<span><b>{beds}</b> qtos</span>')
+    if baths: spec_items.append(f'<span><b>{baths}</b> wc</span>')
+    spec_items.append(f'<span><b>{days}</b> dias</span>')
+    spec_items.append(f'<span><b>{score}</b> score</span>')
+    spec_strip = "<div class='lot-spec'>" + " · ".join(spec_items) + "</div>"
+
+    phone_html = ""
+    if phone:
+        wa = phone.replace("+", "").replace(" ", "")
+        phone_html = (
+            f'<div class="lot-cta">'
+            f'<a href="tel:{phone}" class="lot-cta__call">📞 {phone}</a>'
+            f'<a href="https://wa.me/{wa}" target="_blank" class="lot-cta__wa">WhatsApp ›</a>'
+            f'</div>'
+        )
+
+    st.markdown(
+        f'<article class="lot-page">'
+        f'  <div class="lot-page__eyebrow">{typ} <span class="lot-page__sep">·</span> {zone} {own_chip}</div>'
+        f'  <div class="lot-page__title">{(getattr(lead, "title", None) or "Listing sem título")[:80]}</div>'
+        f'  <div class="lot-page__row">'
+        f'    <div class="lot-page__price">{price_str}</div>'
+        f'    {spec_strip}'
+        f'  </div>'
+        f'  <div class="lot-page__rule"></div>'
+        f'  {phone_html}'
+        f'  <div class="lot-page__source">FONTE · {src}</div>'
+        f'</article>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_lead_extras(lead, *, show_photo: bool = True,
                        show_similar: bool = True,
                        show_edit: bool = True,
@@ -2308,6 +2759,7 @@ def render_lead_extras(lead, *, show_photo: bool = True,
     """
     if not lead:
         return
+    _render_lead_magazine_header(lead)
     tabs = []
     if show_photo:   tabs.append("🖼")
     if show_similar: tabs.append("🔗 Similar")
@@ -3320,29 +3772,38 @@ if page == "&#128202;  Dashboard":
     )[:5]
 
     if _actionable:
-        st.markdown('<div class="lbl-section">Top Accionaveis</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="section-marker" style="margin-top:var(--sp-5);">'
+            '<div class="section-marker__num">II</div>'
+            '<div class="section-marker__title">Lots du jour</div>'
+            '<div class="section-marker__rule"></div>'
+            '<div class="section-marker__fleuron">❦</div>'
+            '<div class="section-marker__caption">Top accionáveis · ordem de prioridade</div>'
+            '</div>'
+            '<div class="lot-list">',
+            unsafe_allow_html=True,
+        )
         for rank, row in enumerate(_actionable, 1):
             lbl      = row.get("label", "COLD")
             area     = row.get("area_m2")
-            area_txt = f' · {area:.0f} m²' if area else ''
+            area_txt = f' &middot; {area:.0f} m²' if area else ''
             days     = row.get("days_on_market", 0)
             st.markdown(
-                f'<div class="card" style="padding:9px 14px;margin-bottom:5px;">'
-                f'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'
-                f'<span style="font-size:.65rem;font-weight:900;color:#33485e;min-width:16px;">#{rank}</span>'
+                f'<div class="card lot">'
+                f'<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">'
                 f'{score_orb(row["score"], lbl)}'
-                f'<div style="flex:1;min-width:120px;">'
-                f'<span style="font-size:.82rem;font-weight:600;color:#a89c80;">{(row.get("title") or "—")[:55]}</span>'
-                f'<span style="font-size:.68rem;color:#56697e;margin-left:6px;">'
-                f'{row.get("typology","?")} · {row.get("zone","?")}{area_txt}</span>'
+                f'<div style="flex:1;min-width:160px;">'
+                f'<div class="lot-title">{(row.get("title") or "—")[:65]}</div>'
+                f'<div class="lot-meta">{row.get("typology") or "?"}'
+                f' &middot; <em>{row.get("zone") or "?"}</em>{area_txt}</div>'
                 f'</div>'
-                f'<span class="price" style="font-size:.82rem;">{fmt_price(row.get("price"))}</span>'
+                f'<span class="price" style="font-size:1.05rem;">{fmt_price(row.get("price"))}</span>'
                 f'{contact_chip(row.get("contact_phone"), row.get("contact_email"), row.get("contact_source"))}'
                 f'{confidence_chip(row.get("contact_confidence"))}'
                 f'{owner_chip(row.get("is_owner"), row.get("agency_name"), row.get("owner_type"))}'
                 f'{lead_type_chip(row.get("lead_type"))}'
                 f'{lead_quality_chip(row.get("lead_quality"))}'
-                f'<span class="chip" style="font-size:.62rem;color:#33485e;">⏱ {days}d</span>'
+                f'<span class="chip lot-days">⏱ {days}d</span>'
                 f'</div>'
                 f'{action_links(row.get("contact_phone"), row.get("contact_email"), row.get("sources"))}'
                 f'</div>',
@@ -3391,6 +3852,7 @@ if page == "&#128202;  Dashboard":
                             st.session_state[f"_nk_{row['id']}"] = _nk + 1
                             st.toast("Nota guardada ✓")
                             st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)  # close .lot-list
         st.divider()
 
     # ─── Batch actions panel ──────────────────────────────────────────────
@@ -3727,11 +4189,13 @@ if page == "&#128202;  Dashboard":
 elif page == "&#127919;  Oportunidades":
 
     st.markdown(
-        '<div style="padding:1.5rem 0 1.2rem;border-bottom:1px solid #1a2640;margin-bottom:1.5rem;">'
-        '<div style="font-size:.62rem;font-weight:700;color:#3b82f6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Mercado</div>'
-        '<div style="font-size:1.55rem;font-weight:900;color:#f1f5f9;letter-spacing:-.5px;">Ranking de Oportunidades</div>'
-        '<div style="font-size:.82rem;color:#56697e;margin-top:4px;">Todas as propriedades detectadas, classificadas por pontuacao</div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Mercado &middot; Catálogo do dia</div>'
+        '  <h1 class="maison-title">Ranking de <em>oportunidades</em>.</h1>'
+        '  <p class="maison-deck">Todas as propriedades detectadas, classificadas pela pontuação composta. '
+        '  Filtra por classificação, fase do funil e tipo de vendedor para refinar a tua selecção.</p>'
+        '  <div class="maison-byline"><span>III &middot; Oportunidades</span><span>Todo o stock</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -3965,11 +4429,13 @@ elif page == "&#127919;  Oportunidades":
 elif page == "&#128203;  CRM":
 
     st.markdown(
-        '<div style="padding:1.5rem 0 1.2rem;border-bottom:1px solid #1a2640;margin-bottom:1.5rem;">'
-        '<div style="font-size:.62rem;font-weight:700;color:#3b82f6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Gestao Comercial</div>'
-        '<div style="font-size:1.55rem;font-weight:900;color:#f1f5f9;">Pipeline de Negociacao</div>'
-        '<div style="font-size:.82rem;color:#56697e;margin-top:4px;">Acompanhamento de contactos, visitas e propostas</div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Gestão &middot; Acompanhamento</div>'
+        '  <h1 class="maison-title">Pipeline de <em>negociação</em>.</h1>'
+        '  <p class="maison-deck">Cada lead em fase própria — contactos feitos, visitas marcadas, '
+        '  propostas em curso, ganhos. Mover é arrastar; tudo guardado em histórico.</p>'
+        '  <div class="maison-byline"><span>IV &middot; CRM</span><span>Coluna por coluna</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -4229,18 +4695,14 @@ elif page == "&#128293;  HOT Focus":
     from storage.models import Lead as _Lead
 
     st.markdown(
-        '<div class="hero">'
-        '  <div class="hero-title">'
-        '    <span class="hero-title-accent">HOT Focus</span> '
-        '    <span style="color:var(--smoke);font-weight:500;">·</span> '
-        '    Onde gastar o teu próximo telefonema'
-        '  </div>'
-        '  <div class="hero-sub">'
-        '    Top 50 leads ordenados por <b>urgência composta</b>: '
-        '    score · queda de preço · dias parado · qualidade do contacto. '
-        '    Toques rápidos abaixo abrem chamada/WhatsApp/email diretamente.'
-        '  </div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Hot Focus &middot; A próxima ligação</div>'
+        '  <h1 class="maison-title">O telefonema <em>certo</em>, agora.</h1>'
+        '  <p class="maison-deck">Top 50 leads ordenados por urgência composta — score, queda de preço, '
+        '  dias parado e qualidade de contacto cruzados num só ranking. Os botões abaixo abrem chamada, '
+        '  WhatsApp ou email directamente.</p>'
+        '  <div class="maison-byline"><span>II &middot; Hot Focus</span><span>Acção imediata</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -4356,14 +4818,13 @@ elif page == "&#129518;  Sistema":
     from datetime import datetime as _dt
 
     st.markdown(
-        '<div class="hero">'
-        '  <div class="hero-title">'
-        '    <span class="hero-title-accent">Sistema</span> · Saúde operacional'
-        '  </div>'
-        '  <div class="hero-sub">'
-        '    Estado dos últimos runs, backups da base de dados, e jobs agendados.'
-        '  </div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Sistema &middot; Sala de máquinas</div>'
+        '  <h1 class="maison-title">Saúde <em>operacional</em>.</h1>'
+        '  <p class="maison-deck">Estado dos últimos runs do scrapper, backups da base de dados, '
+        '  jobs agendados e fila de processamento. Tudo o que mantém a operação a respirar.</p>'
+        '  <div class="maison-byline"><span>VIII &middot; Sistema</span><span>Diagnóstico</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -4493,15 +4954,14 @@ elif page == "&#128240;  Atividade":
     from datetime import datetime as _dt, timedelta as _td
 
     st.markdown(
-        '<div class="hero">'
-        '  <div class="hero-title">'
-        '    <span class="hero-title-accent">Atividade</span> · O que aconteceu hoje'
-        '  </div>'
-        '  <div class="hero-sub">'
-        '    Cronologia das últimas alterações — novos leads, quedas de preço, '
-        '    re-marketing, anúncios sumidos, follow-ups gerados.'
-        '  </div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Atividade &middot; Cronologia</div>'
+        '  <h1 class="maison-title">O que <em>aconteceu</em> hoje.</h1>'
+        '  <p class="maison-deck">Novos leads que entraram, quedas de preço detectadas, '
+        '  anúncios re-publicados, listagens sumidas e follow-ups gerados. A história contínua '
+        '  da operação, vista pela ordem em que foi acontecendo.</p>'
+        '  <div class="maison-byline"><span>V &middot; Atividade</span><span>Diário</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -4613,33 +5073,20 @@ elif page == "&#128205;  Mapa & BI":
     summary = recent_signal_summary(window_days=7)
 
     st.markdown(
-        f'<div class="hero">'
-        f'  <div class="hero-title">'
-        f'    <span class="hero-title-accent">Mapa &amp; BI</span> '
-        f'    <span style="color:var(--smoke);font-weight:500;">·</span> '
-        f'    Última semana'
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">Mapa &amp; BI &middot; Visão de cima</div>'
+        f'  <h1 class="maison-title">A última <em>semana</em>, em panorama.</h1>'
+        f'  <p class="maison-deck">Funil, geografia das oportunidades e ranking das agências cruzados '
+        f'  num só lugar. Os 7 dias mais recentes — o que entrou, o que aqueceu, o que mexeu de preço.</p>'
+        f'  <div class="maison-stats" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-top:var(--sp-4);">'
+        f'    <div><div class="maison-stat-num">{summary["new_leads_7d"]}</div><div class="maison-stat-lbl">Novos 7d</div></div>'
+        f'    <div><div class="maison-stat-num is-rose">{summary["new_hot_7d"]}</div><div class="maison-stat-lbl">Novos HOT</div></div>'
+        f'    <div><div class="maison-stat-num is-warm">{summary["price_drops_7d"]}</div><div class="maison-stat-lbl">Quedas preço</div></div>'
+        f'    <div><div class="maison-stat-num">{summary["super_sellers"]}</div><div class="maison-stat-lbl">Super-sellers</div></div>'
+        f'    <div><div class="maison-stat-num is-mint">{summary["contacted"]}</div><div class="maison-stat-lbl">Contactados</div></div>'
         f'  </div>'
-        f'  <div class="hero-sub">'
-        f'    Visão consolidada do funil, top agências e geografia das oportunidades.'
-        f'  </div>'
-        f'  <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Novos 7d</div>'
-        f'      <div class="intel-val">{summary["new_leads_7d"]}</div></div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Novos HOT</div>'
-        f'      <div class="intel-val" style="color:var(--rose);">{summary["new_hot_7d"]}</div></div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Quedas preço</div>'
-        f'      <div class="intel-val" style="color:var(--amber);">{summary["price_drops_7d"]}</div></div>'
-        f'    <div class="intel-box" style="margin:0;min-width:130px;text-align:center;">'
-        f'      <div class="intel-lbl">Super-sellers</div>'
-        f'      <div class="intel-val" style="color:var(--violet);">{summary["super_sellers"]}</div></div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Contactados</div>'
-        f'      <div class="intel-val" style="color:var(--mint);">{summary["contacted"]}</div></div>'
-        f'  </div>'
-        f'</div>',
+        f'  <div class="maison-byline"><span>VI &middot; Mapa &amp; BI</span><span>Inteligência consolidada</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -4804,13 +5251,14 @@ elif page == "&#128205;  Mapa & BI":
 elif page == "&#128268;  Pre-Market":
 
     st.markdown(
-        '<div style="padding:1.5rem 0 1.2rem;border-bottom:1px solid #1a2640;margin-bottom:1.5rem;">'
-        '<div style="font-size:.62rem;font-weight:700;color:#a78bfa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Inteligencia de Mercado</div>'
-        '<div style="font-size:1.55rem;font-weight:900;color:#f1f5f9;">Sinais Pre-Mercado</div>'
-        '<div style="font-size:.82rem;color:#56697e;margin-top:4px;">'
-        'Proprietarios que podem vender antes de anunciar — licencas de obras, remodelacoes e mudancas profissionais'
-        '</div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Inteligência &middot; Sinais antecipados</div>'
+        '  <h1 class="maison-title">Pré-mercado <em>silencioso</em>.</h1>'
+        '  <p class="maison-deck">Proprietários que podem vender antes de pôr o anúncio — licenças de '
+        '  obras emitidas, remodelações em curso, mudanças profissionais. Apanhar antes do mercado é a '
+        '  vantagem competitiva.</p>'
+        '  <div class="maison-byline"><span>VII &middot; Pre-Market</span><span>Antes da concorrência</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -5068,11 +5516,13 @@ elif page == "&#128268;  Pre-Market":
 elif page == "&#9881;  Motor":
 
     st.markdown(
-        '<div style="padding:1.5rem 0 1.2rem;border-bottom:1px solid #1a2640;margin-bottom:1.5rem;">'
-        '<div style="font-size:.62rem;font-weight:700;color:#3b82f6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Centro de Operacoes</div>'
-        '<div style="font-size:1.55rem;font-weight:900;color:#f1f5f9;">Motor de Inteligencia Imobiliaria</div>'
-        '<div style="font-size:.82rem;color:#56697e;margin-top:4px;">Recolha automatica &#183; Normalizacao &#183; Identificacao de proprietarios &#183; Scoring &#183; Alertas HOT</div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Operações &middot; Bastidores</div>'
+        '  <h1 class="maison-title">O <em>motor</em>.</h1>'
+        '  <p class="maison-deck">Recolha automática &middot; normalização &middot; identificação de proprietários '
+        '  &middot; scoring &middot; alertas HOT. Os engrenagens que correm enquanto a equipa dorme.</p>'
+        '  <div class="maison-byline"><span>IX &middot; Motor</span><span>Pipeline interno</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -5477,11 +5927,13 @@ elif page == "&#9881;  Motor":
 elif page == "&#128228;  Exportar":
 
     st.markdown(
-        '<div style="padding:1.5rem 0 1.2rem;border-bottom:1px solid #1a2640;margin-bottom:1.5rem;">'
-        '<div style="font-size:.62rem;font-weight:700;color:#3b82f6;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Exportar / Importar</div>'
-        '<div style="font-size:1.55rem;font-weight:900;color:#f1f5f9;">Trocar dados com o cliente</div>'
-        '<div style="font-size:.82rem;color:#56697e;margin-top:4px;">Exportar listas prontas · importar contactos antigos do CRM</div>'
-        '</div>',
+        '<section class="maison maison--mini">'
+        '  <div class="maison-eyebrow">Trocas &middot; Entre sistemas</div>'
+        '  <h1 class="maison-title">Exportar &amp; <em>importar</em>.</h1>'
+        '  <p class="maison-deck">Listas prontas para entregar ao cliente, ou contactos antigos do CRM '
+        '  para alimentar o motor. Os formatos certos para cada caso.</p>'
+        '  <div class="maison-byline"><span>X &middot; Trocas</span><span>CSV &middot; JSON &middot; Excel</span></div>'
+        '</section>',
         unsafe_allow_html=True,
     )
 
@@ -5687,3 +6139,23 @@ elif page == "&#128228;  Exportar":
                                            use_container_width=True)
                 except Exception as e:
                     st.error(str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  EDITORIAL FOOTER — appears once on every page (outside any if/elif).
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown(
+    '<footer class="maison-footer">'
+    '  <div class="maison-footer__mark">Patabrava</div>'
+    '  <div class="maison-footer__row">'
+    '    <span>Lisboa</span>'
+    '    <span>Maison de l&#39;immobilier</span>'
+    '    <span>MMXXVI</span>'
+    '  </div>'
+    '  <div class="maison-footer__addr">'
+    '    Praça de Alvalade 6 &middot; Lisboa &middot; AMI 23783 &middot; '
+    '    <em>+351 938 443 833</em> &middot; office@patabrava.pt'
+    '  </div>'
+    '</footer>',
+    unsafe_allow_html=True,
+)
