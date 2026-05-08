@@ -1,0 +1,71 @@
+# ─── Patabrava — full stack ────────────────────────────────────────────────────
+# Three services from a single image:
+#   * dashboard  — Streamlit UI on :8501
+#   * scheduler  — APScheduler running daily scraping at 08:00 PT
+#   * postgres   — opt-in via the `postgres` profile (default: SQLite volume)
+#
+# Quickstart:
+#   docker compose up -d                    # SQLite mode (default)
+#   docker compose --profile postgres up    # PostgreSQL mode
+#
+# All persistent state lives in named volumes so `docker compose down`
+# never loses data.
+
+services:
+
+  dashboard:
+    build: .
+    image: patabrava:latest
+    container_name: patabrava-dashboard
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - patabrava-data:/app/data
+      - patabrava-logs:/app/logs
+    networks: [patabrava]
+    depends_on:
+      - scheduler
+
+  scheduler:
+    image: patabrava:latest
+    container_name: patabrava-scheduler
+    restart: unless-stopped
+    env_file: .env
+    command: ["python", "main.py", "scheduler"]
+    volumes:
+      - patabrava-data:/app/data
+      - patabrava-logs:/app/logs
+    networks: [patabrava]
+
+  # ── Optional Postgres (profile-gated) ────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: patabrava-postgres
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-patabrava}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-patabrava}
+      POSTGRES_DB:       ${POSTGRES_DB:-patabrava}
+    ports:
+      - "5432:5432"
+    volumes:
+      - patabrava-pg:/var/lib/postgresql/data
+    networks: [patabrava]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-patabrava}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  patabrava-data:
+  patabrava-logs:
+  patabrava-pg:
+
+networks:
+  patabrava:
+    driver: bridge

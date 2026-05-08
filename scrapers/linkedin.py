@@ -1,0 +1,485 @@
+"""
+LinkedIn scraper — EXPERIMENTAL property owner signal detection.
+URL: https://www.linkedin.com/search/results/people/
+
+⚠️  EXPERIMENTAL STATUS: LinkedIn blocks scraping aggressively.
+    This scraper requires the user to log in manually first.
+    It works with LOW volumes only (20-30 profiles per session).
+    For scale, use LinkedIn Sales Navigator API.
+
+Purpose
+-------
+Find potential property owners by searching for LinkedIn profiles with
+keywords like "proprietário", "investidor imobiliário", "senhorio" in
+target zones (Lisboa, Almada, Seixal, Sesimbra, Cascais, Sintra).
+
+Strategy
+--------
+1. User logs into LinkedIn in a regular Chrome browser
+2. Scraper launches Playwright with persistent browser context (reuses cookies)
+3. Searches for relevant keywords per zone
+4. Extracts: name, headline, location, profile URL
+5. Visits profile pages to extract contact info (phone/email from /contact-info/)
+6. Very conservative rate limiting to avoid account suspension
+
+Source tag: "linkedin"
+"""
+from __future__ import annotations
+
+import asyncio
+import os
+import random
+import re
+from pathlib import Path
+from typing import Iterator
+
+import httpx
+
+from config.zone_config import get_random_user_agent
+from scrapers.base import BaseScraper
+from utils.logger import get_logger
+
+log = get_logger(__name__)
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+BASE_URL = "https://www.linkedin.com"
+
+# Keywords to search for property owners / investors / landlords
+SEARCH_KEYWORDS: list[str] = [
+    "proprietário imóvel",
+    "investidor imobiliário",
+    "senhorio",
+    "dono imóvel",
+    "investimento imobiliário",
+]
+
+# LinkedIn geo URN IDs.
+# Per the client briefing (Directriz scraping.xlsx, sheet "Linkedin"),
+# the target geographies are the 7 PT concelhos PLUS the United States
+# and the United Kingdom — the client's overseas networks.
+ZONE_GEO_URNS: dict[str, str] = {
+    # Portuguese concelhos — all map to the Greater Lisbon Area URN since
+    # LinkedIn doesn't expose municipality-level geo URNs publicly.
+    "Lisboa":   "105723847",   # Greater Lisbon Area
+    "Cascais":  "105723847",
+    "Sintra":   "105723847",
+    "Almada":   "105723847",
+    "Seixal":   "105723847",
+    "Sesimbra": "105723847",
+    "Oeiras":   "105723847",   # added 2026-05 per client list
+
+    # International expansion — client networks in EUA + Inglaterra
+    "EUA":         "103644278",  # United States
+    "USA":         "103644278",
+    "Estados-Unidos": "103644278",
+    "Inglaterra":  "101165590",  # United Kingdom
+    "UK":          "101165590",
+    "Reino-Unido": "101165590",
+}
+
+# Conservative limits to avoid LinkedIn account suspension
+_MAX_PROFILES_PER_SESSION = 25    # Total profiles to visit per run
+_MAX_SEARCH_PAGES = 2             # Max search result pages per keyword
+_DELAY_BETWEEN_PROFILES = (4, 8)  # Seconds between profile visits
+_DELAY_BETWEEN_PAGES = (6, 12)    # Seconds between search pages
+
+# Path to persistent browser profile for LinkedIn cookies
+_BROWSER_PROFILE_DIR = Path.home() / ".claude" / "linkedin_browser_profile"
+# Storage state JSON (cookies + localStorage) — used INSTEAD of persistent
+# profile because macOS Chromium encrypts cookies via the Keychain, which
+# Playwright cannot decrypt across launches. storage_state bypasses this.
+_STORAGE_STATE_FILE = Path.home() / ".claude" / "linkedin_storage_state.json"
+
+
+class LinkedInScraper(BaseScraper):
+    """
+    EXPERIMENTAL LinkedIn scraper for property owner signals.
+
+    Requires:
+    1. Playwright installed: `playwright install chromium`
+    2. Manual LinkedIn login: Run `python -m scrapers.linkedin --login` first
+       to open a browser window where you can log in. Cookies are saved.
+    3. Very conservative rate limiting (25 profiles max per session)
+
+    ⚠️  Using this scraper excessively WILL result in LinkedIn account
+        restrictions. Use sparingly and monitor for warnings.
+    """
+
+    SOURCE = "linkedin"
+
+    def __init__(self):
+        super().__init__()
+        self._profile_count = 0
+
+    def scrape_zone(self, client: httpx.Client, zone: str) -> Iterator[dict]:
+        """Yield LinkedIn profile data for potential property owners in zone."""
+        geo_urn = ZONE_GEO_URNS.get(zone)
+        if not geo_urn:
+            log.warning("[linkedin] No geo URN for zone: {z}", z=zone)
+            return
+
+        log.info("[linkedin] zone={z} starting experimental scrape", z=zone)
+        try:
+            items = asyncio.run(self._async_scrape_zone(zone, geo_urn))
+            for item in items:
+                yield item
+        except ImportError:
+            log.error("[linkedin] Playwright not installed. Run: playwright install chromium")
+        except Exception as e:
+            log.error("[linkedin] Scrape failed zone={z}: {e}", z=zone, e=e)
+
+    async def _async_scrape_zone(self, zone: str, geo_urn: str) -> list[dict]:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise ImportError("playwright is not installed")
+
+        from config.settings import settings
+
+        items: list[dict] = []
+
+        # Ensure browser profile directory exists
+        _BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Storage state file is mandatory — persistent context fails on
+        # macOS due to Keychain-encrypted cookies that Playwright cannot read.
+        if not _STORAGE_STATE_FILE.exists():
+            log.error(
+                "[linkedin] No storage_state file at {p}. "
+                "Run `python -m scrapers.linkedin --login` first.",
+                p=_STORAGE_STATE_FILE,
+            )
+            return []
+
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=False)
+            context = await browser.new_context(
+                storage_state=str(_STORAGE_STATE_FILE),
+                viewport={"width": 1366, "height": 768},
+                locale="pt-PT",
+                timezone_id="Europe/Lisbon",
+            )
+
+            page = await context.new_page()
+
+            # Check if logged in
+            if not await self._is_logged_in(page):
+                log.error(
+                    "[linkedin] Not logged in. Run with --login flag first to authenticate: "
+                    "python -m scrapers.linkedin --login"
+                )
+                await context.close()
+                return []
+
+            # Search for each keyword (rotate through, stop when budget hit)
+            for keyword in SEARCH_KEYWORDS:
+                if self._profile_count >= _MAX_PROFILES_PER_SESSION:
+                    log.info("[linkedin] Profile budget exhausted ({n})", n=self._profile_count)
+                    break
+
+                search_items = await self._search_keyword(page, keyword, zone, geo_urn)
+                items.extend(search_items)
+
+                # Rest between keyword searches
+                await asyncio.sleep(random.uniform(*_DELAY_BETWEEN_PAGES))
+
+            await context.close()
+
+        log.info("[linkedin] zone={z} → {n} profiles extracted", z=zone, n=len(items))
+        return items
+
+    async def _is_logged_in(self, page) -> bool:
+        """Check if LinkedIn session is active.
+
+        Uses a multi-signal approach:
+        1. li_at cookie present (canonical LinkedIn auth cookie)
+        2. URL is NOT /login or /authwall
+        3. Page title doesn't say "Log In or Sign Up"
+        Any one of these alone is unreliable; together they're robust.
+        """
+        try:
+            # Log cookies in context BEFORE any navigation — this tells us if
+            # the persistent profile cookies were even loaded by Playwright.
+            pre_cookies = await page.context.cookies()
+            pre_li_at = next((c for c in pre_cookies if c["name"] == "li_at"), None)
+            log.info(
+                "[linkedin] PRE-nav cookies — total={n} li_at_present={p}",
+                n=len(pre_cookies), p=pre_li_at is not None,
+            )
+
+            await page.goto(f"{BASE_URL}/feed/", wait_until="domcontentloaded", timeout=20_000)
+            await asyncio.sleep(3)
+
+            url = page.url
+            title = await page.title()
+
+            # Signal 1: cookie
+            cookies = await page.context.cookies()
+            li_at = next((c for c in cookies if c["name"] == "li_at" and "linkedin" in c["domain"]), None)
+            has_li_at = li_at is not None
+
+            # Signal 2: URL
+            redirected_to_login = "/login" in url or "/authwall" in url or "/checkpoint" in url
+
+            # Signal 3: title
+            title_says_login = "log in" in title.lower() or "sign in" in title.lower() or "iniciar sessão" in title.lower()
+
+            log.info(
+                "[linkedin] login check — url={u!r} title={t!r} li_at={a} redirected={r}",
+                u=url, t=title, a=has_li_at, r=redirected_to_login,
+            )
+
+            # Logged in if cookie present AND not redirected AND title doesn't say "log in"
+            return has_li_at and not redirected_to_login and not title_says_login
+        except Exception as e:
+            log.warning("[linkedin] _is_logged_in error: {e}", e=e)
+            return False
+
+    async def _search_keyword(self, page, keyword: str, zone: str, geo_urn: str) -> list[dict]:
+        """Search LinkedIn People for a keyword in a zone."""
+        items = []
+
+        for page_num in range(1, _MAX_SEARCH_PAGES + 1):
+            if self._profile_count >= _MAX_PROFILES_PER_SESSION:
+                break
+
+            search_url = (
+                f"{BASE_URL}/search/results/people/"
+                f"?keywords={keyword.replace(' ', '%20')}"
+                f"&geoUrn=%5B%22{geo_urn}%22%5D"
+                f"&origin=FACETED_SEARCH"
+            )
+            if page_num > 1:
+                search_url += f"&page={page_num}"
+
+            log.debug("[linkedin] Searching: {kw} page={p}", kw=keyword, p=page_num)
+
+            try:
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=20_000)
+                await asyncio.sleep(random.uniform(2.0, 4.0))
+
+                # Check for rate limit or block
+                if "/checkpoint/" in page.url or "restricted" in page.url.lower():
+                    log.warning("[linkedin] Rate limited or blocked — stopping")
+                    break
+
+                # Parse search results
+                result_cards = await page.query_selector_all(
+                    "li.reusable-search__result-container, "
+                    "div.entity-result, "
+                    "li[class*='search-result']"
+                )
+
+                if not result_cards:
+                    log.debug("[linkedin] No results for '{kw}' page={p}", kw=keyword, p=page_num)
+                    break
+
+                for card in result_cards:
+                    if self._profile_count >= _MAX_PROFILES_PER_SESSION:
+                        break
+
+                    try:
+                        item = await self._parse_search_card(card, zone, keyword)
+                        if item:
+                            # Visit profile for contact info
+                            contact = await self._extract_contact_info(page, item["url"])
+                            if contact:
+                                item.update(contact)
+                            items.append(item)
+                            self._profile_count += 1
+
+                            # Conservative delay between profile visits
+                            await asyncio.sleep(random.uniform(*_DELAY_BETWEEN_PROFILES))
+
+                    except Exception as e:
+                        log.debug("[linkedin] Card parse error: {e}", e=e)
+
+            except Exception as e:
+                log.warning("[linkedin] Search error kw='{kw}' page={p}: {e}", kw=keyword, p=page_num, e=e)
+                break
+
+            # Delay between search pages
+            await asyncio.sleep(random.uniform(*_DELAY_BETWEEN_PAGES))
+
+        return items
+
+    async def _parse_search_card(self, card, zone: str, keyword: str) -> dict | None:
+        """Parse a LinkedIn search result card."""
+        try:
+            # Name
+            name_el = await card.query_selector(
+                "span.entity-result__title-text a span[aria-hidden='true'], "
+                "span.actor-name, "
+                "a[class*='app-aware-link'] span[dir='ltr']"
+            )
+            name = (await name_el.inner_text()).strip() if name_el else None
+            if not name or len(name) < 2:
+                return None
+
+            # Profile URL
+            link_el = await card.query_selector(
+                "a.app-aware-link[href*='/in/'], "
+                "a[href*='/in/']"
+            )
+            href = (await link_el.get_attribute("href")) if link_el else None
+            if not href or "/in/" not in href:
+                return None
+            # Clean URL — remove query params
+            profile_url = href.split("?")[0]
+            if not profile_url.startswith("http"):
+                profile_url = f"{BASE_URL}{profile_url}"
+
+            # Headline
+            headline_el = await card.query_selector(
+                "div.entity-result__primary-subtitle, "
+                "p[class*='subline-level-1'], "
+                "div[class*='search-result__info'] p"
+            )
+            headline = (await headline_el.inner_text()).strip() if headline_el else None
+
+            # Location
+            loc_el = await card.query_selector(
+                "div.entity-result__secondary-subtitle, "
+                "p[class*='subline-level-2']"
+            )
+            location = (await loc_el.inner_text()).strip() if loc_el else zone
+
+            return {
+                "external_id":    profile_url.rstrip("/").split("/")[-1],
+                "url":            profile_url,
+                "title":          f"{name} — {headline}" if headline else name,
+                "author_name":    name,
+                "text":           headline or "",
+                "location":       location,
+                "zone_query":     zone,
+                "contact_name":   name,
+                "contact_phone":  None,
+                "contact_email":  None,
+                "contact_source": None,
+                "source":         "linkedin",
+                "search_keyword": keyword,
+            }
+
+        except Exception as e:
+            log.debug("[linkedin] _parse_search_card error: {e}", e=e)
+            return None
+
+    async def _extract_contact_info(self, page, profile_url: str) -> dict | None:
+        """Visit a LinkedIn profile and extract contact information."""
+        try:
+            contact_url = f"{profile_url.rstrip('/')}/overlay/contact-info/"
+            await page.goto(contact_url, wait_until="domcontentloaded", timeout=15_000)
+            await asyncio.sleep(random.uniform(1.5, 3.0))
+
+            result = {}
+
+            # Phone numbers
+            phone_section = await page.query_selector("section.ci-phone, [class*='ci-phone']")
+            if phone_section:
+                phone_els = await phone_section.query_selector_all("span.t-14, span[class*='t-14']")
+                for el in phone_els:
+                    text = (await el.inner_text()).strip()
+                    clean = re.sub(r"[\s\-\(\)]", "", text).lstrip("+")
+                    if clean.startswith("351"):
+                        clean = clean[3:]
+                    if re.match(r"^[2679]\d{8}$", clean):
+                        result["contact_phone"] = f"+351{clean}"
+                        result["contact_source"] = "linkedin"
+                        break
+
+            # Email
+            email_section = await page.query_selector("section.ci-email, [class*='ci-email']")
+            if email_section:
+                email_els = await email_section.query_selector_all("a[href^='mailto:']")
+                for el in email_els:
+                    href = (await el.get_attribute("href")) or ""
+                    email = href.replace("mailto:", "").strip()
+                    if "@" in email:
+                        result["contact_email"] = email
+                        if not result.get("contact_source"):
+                            result["contact_source"] = "linkedin"
+                        break
+
+            # Birthday (if visible)
+            birthday_section = await page.query_selector("section.ci-birthday, [class*='ci-birthday']")
+            if birthday_section:
+                bday_el = await birthday_section.query_selector("span.t-14, span[class*='t-14']")
+                if bday_el:
+                    result["birthday"] = (await bday_el.inner_text()).strip()
+
+            return result if result else None
+
+        except Exception as e:
+            log.debug("[linkedin] Contact info extraction error {u}: {e}", u=profile_url, e=e)
+            return None
+
+
+# ── CLI entry point for manual login ──────────────────────────────────────────
+
+def _login_interactive():
+    """Open a browser window for manual LinkedIn login."""
+    import asyncio
+
+    async def _do_login():
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            print("Playwright not installed. Run: playwright install chromium")
+            return
+
+        _BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+
+        print("\n" + "=" * 60)
+        print("LinkedIn Login — Browser Window")
+        print("=" * 60)
+        print("1. A browser window will open.")
+        print("2. Log into your LinkedIn account.")
+        print("3. Once logged in, close the browser window.")
+        print("4. Your session cookies will be saved for the scraper.")
+        print("=" * 60 + "\n")
+
+        async with async_playwright() as pw:
+            # Use a regular browser (NOT persistent context) so we can call
+            # storage_state() to save cookies as plain JSON. The persistent
+            # context approach fails on macOS due to Keychain encryption.
+            browser = await pw.chromium.launch(headless=False)
+            context = await browser.new_context(
+                viewport={"width": 1366, "height": 768},
+                locale="pt-PT",
+                timezone_id="Europe/Lisbon",
+            )
+            page = await context.new_page()
+            await page.goto("https://www.linkedin.com/login", wait_until="domcontentloaded")
+
+            print("Waiting for login... Close the browser when done.")
+
+            # Wait until the user closes the browser
+            try:
+                await page.wait_for_event("close", timeout=600_000)  # 10 min
+            except Exception:
+                pass
+
+            # Save cookies + localStorage to JSON before closing context
+            try:
+                _STORAGE_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                await context.storage_state(path=str(_STORAGE_STATE_FILE))
+                print(f"\n✓ Session saved → {_STORAGE_STATE_FILE}")
+            except Exception as e:
+                print(f"\n✗ Could not save session: {e}")
+
+            await context.close()
+            await browser.close()
+            print("Now run: python main.py scrape --sources linkedin")
+
+    asyncio.run(_do_login())
+
+
+if __name__ == "__main__":
+    import sys
+    if "--login" in sys.argv:
+        _login_interactive()
+    else:
+        print("Usage: python -m scrapers.linkedin --login")
+        print("  Opens a browser for manual LinkedIn login.")
+        print("  Cookies are saved for the scraper to reuse.")
