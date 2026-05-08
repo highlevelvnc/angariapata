@@ -1096,6 +1096,36 @@ _CSS_CARDS = """<style>
             background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+
+/* Shimmer sweep — polished gold engraving feel on key numerals.
+   A diagonal highlight band passes through the gradient text once
+   every 6 seconds, slow and theatrical (not blinking-disco). */
+.has-shimmer {
+    background:
+        linear-gradient(
+            115deg,
+            #a8861a 0%,
+            #ddc269 25%,
+            #ffe6c2 45%,
+            #ffffff 50%,
+            #ffe6c2 55%,
+            #ddc269 75%,
+            #a8861a 100%
+        );
+    background-size: 240% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gold-sweep 6.5s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes gold-sweep {
+    0%, 60% { background-position: 100% 0; }
+    100%    { background-position: -120% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .has-shimmer { animation: none; background-position: 50% 0; }
+}
 .maison-figure-meta {
     display: flex;
     flex-direction: column;
@@ -1367,6 +1397,166 @@ _CSS_CARDS = """<style>
     -webkit-background-clip: text;
             background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+/* ──── Smooth scroll + skeleton shimmer for loading states ──────────────── */
+html { scroll-behavior: smooth; }
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(221,194,105,.04) 0%,
+        rgba(221,194,105,.10) 35%,
+        rgba(238,218,160,.18) 50%,
+        rgba(221,194,105,.10) 65%,
+        rgba(221,194,105,.04) 100%
+    );
+    background-size: 220% 100%;
+    border-radius: 8px;
+    animation: skeleton-sweep 1.4s cubic-bezier(.4,0,.2,1) infinite;
+}
+.skeleton--line {
+    height: 14px;
+    margin: 6px 0;
+}
+.skeleton--big   { height: 36px; }
+.skeleton--block { height: 96px; border-radius: 14px; }
+@keyframes skeleton-sweep {
+    from { background-position: 100% 0; }
+    to   { background-position: -120% 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  PRINT STYLESHEET                                                         */
+/*  When the operator prints (or saves to PDF) a page, strip the dashboard  */
+/*  chrome and keep only the editorial content — turn it into a clean       */
+/*  magazine page printable on A4.                                          */
+/* ════════════════════════════════════════════════════════════════════════ */
+@media print {
+    /* Reset to paper-friendly background */
+    :root {
+        --ink-00: #ffffff;
+        --ink-10: #ffffff;
+        --ink-20: #f8f4ea;
+        --ink-30: #ece4d3;
+        --ice:   #1a1106;
+        --fog:   #2a2010;
+        --smoke: #5c5240;
+        --slate: #786c52;
+        --dust:  #a89c80;
+    }
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    .main,
+    body {
+        background: #ffffff !important;
+        color: #1a1106 !important;
+    }
+    /* Hide everything that's not editorial content */
+    [data-testid="stSidebar"],
+    [data-testid="stToolbar"],
+    [data-testid="stHeader"],
+    .stDeployButton,
+    .stButton,
+    .dust,
+    .stTextInput,
+    .stSelectbox,
+    .stMultiSelect,
+    .stCheckbox,
+    .stRadio,
+    .stSlider,
+    .stExpander summary svg,
+    .stTabs [role="tablist"] { display: none !important; }
+
+    /* Maison hero — paper variant: keep the typography, drop the dark glow */
+    .maison,
+    .maison--mini,
+    .lot-page,
+    .card,
+    .lot {
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        backdrop-filter: none !important;
+        padding: 16px 0 !important;
+    }
+    .maison-watermark { display: none !important; }
+    .maison-rule-top, .maison-rule-bot,
+    .lot-page__rule {
+        background: transparent !important;
+    }
+    .maison-rule-top::before,
+    .maison-rule-top::after,
+    .maison-rule-bot::before,
+    .maison-rule-bot::after,
+    .lot-page__rule {
+        background: linear-gradient(90deg, transparent, #c2a84b 30%, #c2a84b 70%, transparent) !important;
+        opacity: 1 !important;
+    }
+    /* Gold gradients become deep gold ink on paper */
+    .has-shimmer,
+    .maison-figure-num.is-hot,
+    .lot-page__price,
+    .price,
+    .hero-title-accent {
+        background: none !important;
+        -webkit-text-fill-color: #b89030 !important;
+        color: #b89030 !important;
+        animation: none !important;
+    }
+    .maison-eyebrow,
+    .lot-page__eyebrow,
+    .section-marker__caption,
+    .maison-byline,
+    .maison-stat-lbl,
+    .maison-figure-lbl {
+        color: #5c5240 !important;
+    }
+    .section-marker__num {
+        background: #b89030 !important;
+        color: #ffffff !important;
+        text-shadow: none !important;
+        box-shadow: none !important;
+    }
+    .lot-cta__call {
+        background: none !important;
+        border: 1px solid #b89030 !important;
+        color: #b89030 !important;
+        box-shadow: none !important;
+    }
+    .lot-page__title,
+    .maison-title,
+    .lot-title,
+    .section-marker__title {
+        color: #1a1106 !important;
+    }
+    .lot::before { color: #5c5240 !important; }
+    .lot::after  { display: none !important; }
+
+    .maison-footer {
+        margin-top: 32px !important;
+        border-top: 1px solid #c2a84b !important;
+    }
+    .maison-footer__mark,
+    .maison-footer__row,
+    .maison-footer__addr {
+        color: #1a1106 !important;
+    }
+    .maison-footer__row > span:not(:last-child)::after {
+        color: #b89030 !important;
+    }
+
+    /* Page break hints */
+    .section-marker { page-break-before: avoid; page-break-after: avoid; }
+    h1, h2, h3 { page-break-after: avoid; }
+    article, section { page-break-inside: avoid; }
+
+    @page {
+        size: A4;
+        margin: 18mm 20mm 22mm 20mm;
+    }
 }
 
 /* ──── Lot page — magazine spread header for a single lead detail ───────── */
@@ -3664,7 +3854,7 @@ if page == "&#128202;  Dashboard":
             </div>
             <div class="maison-numerals">
               <div class="maison-figure">
-                <div class="maison-figure-num is-hot">{hot_n}</div>
+                <div class="maison-figure-num is-hot has-shimmer">{hot_n}</div>
                 <div class="maison-figure-meta">
                   <div class="maison-figure-lbl">HOT na agenda</div>
                   <div class="maison-figure-sub">{_hot_sub}</div>
@@ -5090,8 +5280,17 @@ elif page == "&#128205;  Mapa & BI":
         unsafe_allow_html=True,
     )
 
-    # ─── Heatmap ──────────────────────────────────────────────────────────
-    st.markdown('<div class="lbl-section">Mapa de oportunidades</div>', unsafe_allow_html=True)
+    # ─── Heatmap (luxury monochrome cartography) ──────────────────────────
+    st.markdown(
+        '<div class="section-marker" style="margin-top:var(--sp-5);">'
+        '<div class="section-marker__num">i</div>'
+        '<div class="section-marker__title">Carta geográfica</div>'
+        '<div class="section-marker__rule"></div>'
+        '<div class="section-marker__fleuron">❦</div>'
+        '<div class="section-marker__caption">Densidade · score · €/m²</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     try:
         import folium
         from streamlit_folium import st_folium
@@ -5100,43 +5299,82 @@ elif page == "&#128205;  Mapa & BI":
         if zone_data:
             avg_lat = sum(z["lat"] for z in zone_data) / len(zone_data)
             avg_lon = sum(z["lon"] for z in zone_data) / len(zone_data)
+            # Pure cartography — no labels — gives an editorial monochrome plate
+            # feel. Labels removed via the `_no_labels` variant of CartoDB
+            # dark; we'll re-add labels selectively only when zoomed in.
             m = folium.Map(
                 location=[avg_lat, avg_lon],
                 zoom_start=10,
-                tiles="CartoDB dark_matter",
-                control_scale=True,
+                tiles=None,
+                control_scale=False,
+                zoom_control=True,
             )
+            folium.TileLayer(
+                tiles="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png",
+                attr="© OpenStreetMap · © CARTO",
+                name="Carto monochrome",
+                control=False,
+                max_zoom=20,
+            ).add_to(m)
+            folium.TileLayer(
+                tiles="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}@2x.png",
+                attr="© OpenStreetMap · © CARTO",
+                name="labels",
+                control=False,
+                opacity=0.4,
+            ).add_to(m)
+
             mx = max(z["count"] for z in zone_data) or 1
             for z in zone_data:
-                # Radius scaled by lead count; color by avg score
-                radius = 10 + 30 * (z["count"] / mx)
+                radius = 12 + 32 * (z["count"] / mx)
                 avg = z["avg_score"]
+                # Tier-aware palette — keep semantic intent but warmer hues
                 if avg >= 60:
-                    color, fill = "#fb7185", "rgba(251,113,133,.55)"
+                    stroke, fill, glow = "#ffb4be", "rgba(251,113,133,.45)", "#fb7185"
+                    tier = "HOT"
                 elif avg >= 40:
-                    color, fill = "#fbbf24", "rgba(251,191,36,.5)"
+                    stroke, fill, glow = "#ffe6c2", "rgba(238,218,160,.45)", "#ddc269"
+                    tier = "WARM"
                 else:
-                    color, fill = "#38bdf8", "rgba(56,189,248,.45)"
+                    stroke, fill, glow = "#a89c80", "rgba(120,108,82,.30)", "#786c52"
+                    tier = "COLD"
+                pm2 = int(z["avg_price_per_m2"] or 0)
+                pm2_fmt = f"{pm2:,}".replace(",", " ") if pm2 else "—"
                 folium.CircleMarker(
                     location=[z["lat"], z["lon"]],
                     radius=radius,
-                    color=color,
+                    color=stroke,
                     fill=True,
                     fill_color=fill,
-                    fill_opacity=0.7,
-                    weight=2,
+                    fill_opacity=0.55,
+                    weight=1.4,
                     popup=folium.Popup(
-                        f"<div style='font-family:Inter,sans-serif;'>"
-                        f"<b style='font-size:14px;'>{z['zone']}</b><br/>"
-                        f"<span style='color:#5c5240;'>Leads:</span> <b>{z['count']}</b><br/>"
-                        f"<span style='color:#5c5240;'>HOT:</span> <b style='color:#fb7185;'>{z['hot_count']}</b><br/>"
-                        f"<span style='color:#5c5240;'>Score:</span> <b>{z['avg_score']:.1f}</b><br/>"
-                        f"<span style='color:#5c5240;'>€/m²:</span> <b>{int(z['avg_price_per_m2'] or 0):,}</b>"
-                        f"</div>",
-                        max_width=240,
+                        f"<div style='font-family:Inter,sans-serif;color:#1a1106;'>"
+                        f"<div style='font-size:9.5px;font-weight:600;letter-spacing:.22em;"
+                        f"text-transform:uppercase;color:{glow};margin-bottom:6px;'>{tier}</div>"
+                        f"<div style='font-family:Fraunces,Georgia,serif;font-size:20px;"
+                        f"font-weight:420;letter-spacing:-.012em;line-height:1;color:#1a1106;"
+                        f"margin-bottom:10px;'>{z['zone']}</div>"
+                        f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;"
+                        f"font-size:11px;'>"
+                        f"<div><div style='font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;"
+                        f"color:#786c52;'>Leads</div><b style='font-family:Fraunces,Georgia,serif;"
+                        f"font-style:italic;font-size:18px;font-weight:380;color:#1a1106;'>{z['count']}</b></div>"
+                        f"<div><div style='font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;"
+                        f"color:#786c52;'>HOT</div><b style='font-family:Fraunces,Georgia,serif;"
+                        f"font-style:italic;font-size:18px;font-weight:380;color:#fb7185;'>{z['hot_count']}</b></div>"
+                        f"<div><div style='font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;"
+                        f"color:#786c52;'>Score</div><b style='font-family:Fraunces,Georgia,serif;"
+                        f"font-style:italic;font-size:18px;font-weight:380;color:#1a1106;'>{z['avg_score']:.1f}</b></div>"
+                        f"<div><div style='font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;"
+                        f"color:#786c52;'>€/m²</div><b style='font-family:Fraunces,Georgia,serif;"
+                        f"font-style:italic;font-size:18px;font-weight:380;color:#b89030;'>{pm2_fmt}</b></div>"
+                        f"</div></div>",
+                        max_width=280,
                     ),
+                    tooltip=z["zone"],
                 ).add_to(m)
-            st_folium(m, height=440, use_container_width=True, returned_objects=[])
+            st_folium(m, height=480, use_container_width=True, returned_objects=[])
         else:
             st.caption("Sem dados geográficos suficientes para desenhar o mapa.")
     except ImportError:
