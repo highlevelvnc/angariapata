@@ -74,9 +74,17 @@ if _LOGO_PATH.exists() and hasattr(st, "logo"):
 #   slate      #786c52   text dim
 
 _CSS_BASE = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 /* ──── Root tokens ──────────────────────────────────────────────────────── */
+/*
+ *  PATABRAVA — MAISON DE L'IMMOBILIER
+ *  Aesthetic direction: auction house × architectural digest.
+ *  Fraunces (variable serif, opsz axis) carries every "moment" — display
+ *  titles, dominant numerals, italic accents, kicker labels. Inter remains
+ *  the workhorse for tabular data and dense UI text. Space Grotesk lingers
+ *  only on legacy components for now.
+ */
 :root {
   --ink-00: #0a0806;
   --ink-10: #141008;
@@ -107,6 +115,21 @@ _CSS_BASE = """<style>
   --shadow-card:  0 1px 0 rgba(255,255,255,.04) inset, 0 8px 32px -16px rgba(0,0,0,.6);
   --shadow-glow:  0 0 0 1px rgba(221,194,105,.15), 0 8px 40px -12px rgba(221,194,105,.25);
   --shadow-glow-violet: 0 0 0 1px rgba(198, 162, 100,.18), 0 8px 40px -12px rgba(198, 162, 100,.3);
+
+  /* ──── Editorial typography stack ─────────────────────────────────────── */
+  --font-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-legacy:  'Space Grotesk', sans-serif;
+
+  /* Spacing scale — generous, magazine-like. Use these instead of literals. */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;   --sp-4: 18px;
+  --sp-5: 28px;  --sp-6: 44px;  --sp-7: 72px;   --sp-8: 116px;
+
+  /* Numeric type scale — used for editorial numerals */
+  --num-xxl: clamp(72px, 11vw, 156px);   /* hero kicker */
+  --num-xl:  clamp(40px, 5vw, 64px);     /* section anchor numeral */
+  --num-lg:  clamp(28px, 3vw, 40px);     /* card-level KPI */
 }
 
 /* ──── Page chrome ─────────────────────────────────────────────────────── */
@@ -556,13 +579,20 @@ _CSS_CARDS = """<style>
     color: var(--ice);
 }
 
-/* ──── Price typography ────────────────────────────────────────────────── */
+/* ──── Price typography — editorial Fraunces italic for that auction-house feel ─── */
 .price {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.22rem;
-    font-weight: 700;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 36, "SOFT" 60;
+    font-size: 1.42rem;
+    font-weight: 380;
     color: var(--ice);
-    letter-spacing: -.02em;
+    letter-spacing: -.01em;
+    font-feature-settings: "lnum","tnum";
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 70%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 .delta-pos {
     font-size: .72rem;
@@ -910,6 +940,276 @@ _CSS_CARDS = """<style>
     font-size: .9rem;
     color: var(--smoke);
     line-height: 1.5;
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  MAISON — editorial luxury hero                                          */
+/*  Used on the main Dashboard page. Conceptually: a magazine "spread"     */
+/*  with a dominant numeral kicker, eyebrow tracked-out small caps, italic */
+/*  Fraunces sub-line, and three secondary numerals as supporting facts.   */
+/* ════════════════════════════════════════════════════════════════════════ */
+.maison {
+    position: relative;
+    padding: var(--sp-6) var(--sp-6) var(--sp-5);
+    margin: var(--sp-3) 0 var(--sp-6);
+    isolation: isolate;
+    overflow: hidden;
+    border-top:    1px solid rgba(221,194,105,.35);
+    border-bottom: 1px solid rgba(221,194,105,.18);
+    background:
+        radial-gradient(900px 480px at 88% -20%, rgba(221,194,105,.10), transparent 65%),
+        radial-gradient(700px 380px at -10% 110%, rgba(168,134,26,.08), transparent 70%),
+        linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    /* film-grain noise */
+}
+.maison::before {
+    /* Vertical hairline left — auction-catalogue marker */
+    content: "";
+    position: absolute;
+    left: 0; top: 18%; bottom: 18%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent 0%, var(--mint) 50%, transparent 100%);
+    opacity: .55;
+}
+.maison::after {
+    /* Subtle grain to break the flat dark background */
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    opacity: .035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .85 0 0 0 0 .55 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.maison-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--sp-5) var(--sp-6);
+    align-items: end;
+}
+@media (max-width: 900px) {
+    .maison-grid { grid-template-columns: 1fr; }
+}
+
+.maison-eyebrow {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: var(--sp-3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.maison-eyebrow::before {
+    content: "";
+    display: inline-block;
+    width: 22px; height: 1px;
+    background: var(--mint);
+    opacity: .9;
+}
+.maison-title {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 144, "SOFT" 40;
+    font-weight: 380;
+    font-size: clamp(38px, 5.6vw, 78px);
+    line-height: .96;
+    letter-spacing: -0.022em;
+    color: var(--ice);
+    margin: 0 0 var(--sp-3) 0;
+}
+.maison-title em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 320;
+    color: var(--mint-l);
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.maison-deck {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 32, "SOFT" 60;
+    font-weight: 320;
+    font-size: clamp(15px, 1.5vw, 19px);
+    line-height: 1.5;
+    color: var(--fog);
+    max-width: 56ch;
+    margin: var(--sp-3) 0 var(--sp-2);
+}
+.maison-byline {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--slate);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    margin-top: var(--sp-4);
+}
+.maison-byline > span:not(:last-child)::after {
+    content: "·";
+    margin-left: var(--sp-3);
+    color: var(--mint);
+    opacity: .7;
+}
+
+/* Numeral block — dominant figure on the right */
+.maison-numerals {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+}
+.maison-figure {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: end;
+    gap: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid rgba(221,194,105,.18);
+    width: 100%;
+}
+.maison-figure-num {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 144, "SOFT" 0;
+    font-weight: 280;
+    font-size: var(--num-xxl);
+    line-height: .82;
+    letter-spacing: -0.04em;
+    color: var(--ice);
+    font-feature-settings: "lnum", "tnum";
+}
+.maison-figure-num.is-hot {
+    background: linear-gradient(180deg, #ffe6c2 0%, #ddc269 55%, #a8861a 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.maison-figure-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 12px;
+}
+.maison-figure-lbl {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--smoke);
+}
+.maison-figure-sub {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 14;
+    font-weight: 300;
+    font-size: 14px;
+    color: var(--fog);
+    margin-top: 2px;
+}
+
+.maison-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3) var(--sp-5);
+    width: 100%;
+    padding-top: var(--sp-2);
+}
+.maison-stat-num {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 72, "SOFT" 0;
+    font-weight: 320;
+    font-size: var(--num-lg);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ice);
+    font-feature-settings: "lnum","tnum";
+}
+.maison-stat-num.is-warm  { color: var(--amber); }
+.maison-stat-num.is-rose  { color: var(--rose); }
+.maison-stat-num.is-mint  { color: var(--mint); }
+.maison-stat-lbl {
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-top: 4px;
+}
+
+/* Page-load orchestration — staggered reveals on the maison */
+@keyframes maison-rise {
+    0%   { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+.maison-eyebrow,
+.maison-title,
+.maison-deck,
+.maison-byline,
+.maison-figure,
+.maison-stats {
+    opacity: 0;
+    animation: maison-rise .9s cubic-bezier(.2,.7,.2,1) forwards;
+}
+.maison-eyebrow { animation-delay: 80ms; }
+.maison-title   { animation-delay: 160ms; }
+.maison-deck    { animation-delay: 240ms; }
+.maison-figure  { animation-delay: 320ms; }
+.maison-stats   { animation-delay: 400ms; }
+.maison-byline  { animation-delay: 480ms; }
+
+/* Section marker — roman numeral plate, used between the maison and the data view */
+.section-marker {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    margin: var(--sp-6) 0 var(--sp-4);
+    padding: 0 var(--sp-2);
+}
+.section-marker__num {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 32;
+    font-weight: 300;
+    font-size: 22px;
+    color: var(--mint);
+    letter-spacing: .04em;
+    min-width: 2.4em;
+}
+.section-marker__title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 24, "SOFT" 30;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--ice);
+    letter-spacing: -.012em;
+    flex: 0 0 auto;
+}
+.section-marker__rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(221,194,105,.45) 0%, rgba(221,194,105,0) 100%);
+}
+.section-marker__caption {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--slate);
 }
 </style>"""
 
@@ -2660,37 +2960,66 @@ if page == "&#128202;  Dashboard":
     total  = stats.get("total_active", 0)
     avg_s  = stats.get("avg_score", 0)
 
-    # Hero banner — animated gradient + live KPIs
+    # ── Maison hero — editorial luxury opening (replaces legacy banner) ────
+    _hot_today  = stats.get("hot_today",   0)
+    _added_today = stats.get("added_today", 0)
+    _phone_n    = stats.get("with_phone_count", 0)
+    _edition_label = datetime.now().strftime("Edição de %d %b %Y").upper()
+    # PT month-name normalisation (Python returns en/locale-dependent abbreviations)
+    _pt_months = {"JAN":"JAN","FEB":"FEV","MAR":"MAR","APR":"ABR","MAY":"MAI","JUN":"JUN",
+                  "JUL":"JUL","AUG":"AGO","SEP":"SET","OCT":"OUT","NOV":"NOV","DEC":"DEZ"}
+    for en, pt in _pt_months.items():
+        _edition_label = _edition_label.replace(en, pt)
+    _hot_sub  = f"+ {_hot_today} novos hoje" if _hot_today else "sem novos hoje"
+    _added_sub = f"+ {_added_today} hoje" if _added_today else "—"
+
     st.markdown(
-        f'<div class="hero">'
-        f'  <div class="hero-title">'
-        f'    <span class="hero-title-accent">Patabrava</span> '
-        f'    <span style="color:var(--smoke);font-weight:500;">·</span> '
-        f'    Intelligence Dashboard'
-        f'  </div>'
-        f'  <div class="hero-sub">'
-        f'    Lead intelligence em tempo real &middot; OLX, Imovirtual, Idealista, Sapo, Custojusto'
-        f'    &middot; análise contínua &middot; alertas HOT automáticos'
-        f'  </div>'
-        f'  <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">HOT agora</div>'
-        f'      <div class="intel-val" style="color:var(--rose);">{hot_n}</div>'
-        f'    </div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">WARM</div>'
-        f'      <div class="intel-val" style="color:var(--amber);">{warm_n}</div>'
-        f'    </div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Total ativo</div>'
-        f'      <div class="intel-val">{total}</div>'
-        f'    </div>'
-        f'    <div class="intel-box" style="margin:0;min-width:120px;text-align:center;">'
-        f'      <div class="intel-lbl">Score médio</div>'
-        f'      <div class="intel-val" style="color:var(--sky);">{avg_s}</div>'
-        f'    </div>'
-        f'  </div>'
-        f'</div>',
+        f"""
+        <section class="maison">
+          <div class="maison-grid">
+            <div class="maison-col-left">
+              <div class="maison-eyebrow">Maison · Angariação Lisboa</div>
+              <h1 class="maison-title">Patabrava<br/><em>Maison de l'immobilier</em></h1>
+              <p class="maison-deck">Lead intelligence em tempo real. Cada manhã, uma nova selecção
+                de imóveis directamente do proprietário — para a equipa angariar antes de qualquer outra agência.</p>
+              <div class="maison-byline">
+                <span>{_edition_label}</span>
+                <span>OLX · Imovirtual</span>
+                <span>{total} oportunidades activas</span>
+              </div>
+            </div>
+            <div class="maison-numerals">
+              <div class="maison-figure">
+                <div class="maison-figure-num is-hot">{hot_n}</div>
+                <div class="maison-figure-meta">
+                  <div class="maison-figure-lbl">HOT na agenda</div>
+                  <div class="maison-figure-sub">{_hot_sub}</div>
+                </div>
+              </div>
+              <div class="maison-stats">
+                <div>
+                  <div class="maison-stat-num is-warm">{warm_n}</div>
+                  <div class="maison-stat-lbl">Warm</div>
+                </div>
+                <div>
+                  <div class="maison-stat-num is-mint">{_phone_n}</div>
+                  <div class="maison-stat-lbl">Com telefone</div>
+                </div>
+                <div>
+                  <div class="maison-stat-num">{avg_s}</div>
+                  <div class="maison-stat-lbl">Score médio</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="section-marker">
+          <div class="section-marker__num">I.</div>
+          <div class="section-marker__title">Vista do dia</div>
+          <div class="section-marker__rule"></div>
+          <div class="section-marker__caption">Indicadores principais</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
