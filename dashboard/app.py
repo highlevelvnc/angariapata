@@ -40,6 +40,232 @@ def _asset_b64(path: Path) -> str:
     return f"data:image/{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
+# ─── i18n — Portuguese / English ───────────────────────────────────────────
+# Single source of truth for every user-facing string that needs to switch
+# language. Keys use dot-namespacing so it's easy to scan. Missing keys
+# fall back to the key itself, so a typo is visible in the UI.
+
+TRANSLATIONS: dict[str, dict[str, str]] = {
+    # ── Top toggle ─────────────────────────────────────────────────────────
+    "lang.label":                 {"pt": "Idioma",                    "en": "Language"},
+
+    # ── Sidebar nav groups ────────────────────────────────────────────────
+    "nav.hunt.title":             {"pt": "Caça",                      "en": "Hunt"},
+    "nav.hunt.caption":           {"pt": "Encontrar leads",           "en": "Find leads"},
+    "nav.sell.title":              {"pt": "Venda",                     "en": "Sell"},
+    "nav.sell.caption":            {"pt": "Trabalhar leads",           "en": "Work leads"},
+    "nav.intel.title":             {"pt": "Inteligência",              "en": "Intelligence"},
+    "nav.intel.caption":           {"pt": "Análise estratégica",       "en": "Strategic analysis"},
+    "nav.engine.title":            {"pt": "Motor",                     "en": "Engine"},
+    "nav.engine.caption":          {"pt": "Bastidores",                "en": "Behind the scenes"},
+
+    # ── Sidebar nav items (label · caption) ───────────────────────────────
+    "nav.dashboard.label":         {"pt": "Dashboard",                 "en": "Dashboard"},
+    "nav.dashboard.caption":       {"pt": "Vista do dia",              "en": "Daily view"},
+    "nav.hot.label":               {"pt": "HOT Focus",                 "en": "HOT Focus"},
+    "nav.hot.caption":             {"pt": "Acção imediata",            "en": "Immediate action"},
+    "nav.premarket.label":         {"pt": "Pre-Market",                "en": "Pre-Market"},
+    "nav.premarket.caption":       {"pt": "Antes do mercado",          "en": "Before the market"},
+    "nav.opportunities.label":     {"pt": "Oportunidades",             "en": "Opportunities"},
+    "nav.opportunities.caption":   {"pt": "Stock completo",            "en": "Full stock"},
+    "nav.crm.label":               {"pt": "CRM",                       "en": "CRM"},
+    "nav.crm.caption":             {"pt": "Pipeline de negociação",    "en": "Sales pipeline"},
+    "nav.activity.label":          {"pt": "Atividade",                 "en": "Activity"},
+    "nav.activity.caption":        {"pt": "Cronologia",                "en": "Timeline"},
+    "nav.map.label":               {"pt": "Mapa & BI",                 "en": "Map & BI"},
+    "nav.map.caption":             {"pt": "Geografia & funil",         "en": "Geography & funnel"},
+    "nav.system.label":            {"pt": "Sistema",                   "en": "System"},
+    "nav.system.caption":          {"pt": "Saúde operacional",         "en": "Operational health"},
+    "nav.engine_page.label":       {"pt": "Motor",                     "en": "Engine"},
+    "nav.engine_page.caption":     {"pt": "Pipeline interno",          "en": "Internal pipeline"},
+    "nav.export.label":            {"pt": "Exportar",                  "en": "Export"},
+    "nav.export.caption":          {"pt": "Trocas de dados",           "en": "Data exchange"},
+
+    # ── Maison hero (Dashboard) ───────────────────────────────────────────
+    "maison.eyebrow":              {"pt": "Maison · Angariação Lisboa",
+                                    "en": "Maison · Lisbon listings desk"},
+    "maison.title.line1":          {"pt": "Patabrava",                  "en": "Patabrava"},
+    "maison.title.line2":          {"pt": "Maison de l'immobilier",     "en": "Maison de l'immobilier"},
+    "maison.deck":                 {"pt": "Lead intelligence em tempo real. Cada manhã, uma nova selecção "
+                                          "de imóveis directamente do proprietário — para a equipa angariar antes "
+                                          "de qualquer outra agência da capital.",
+                                    "en": "Real-time lead intelligence. Every morning, a fresh selection of "
+                                          "owner-direct listings — for the team to capture before any other "
+                                          "agency in the city."},
+    "maison.byline.opps":          {"pt": "{n} oportunidades activas",  "en": "{n} active opportunities"},
+    "maison.figure.lbl":           {"pt": "HOT na agenda",              "en": "HOT on the agenda"},
+    "maison.figure.sub.new":       {"pt": "+ {n} novos hoje",           "en": "+ {n} new today"},
+    "maison.figure.sub.none":      {"pt": "sem novos hoje",             "en": "none new today"},
+    "maison.stat.warm":            {"pt": "Warm",                       "en": "Warm"},
+    "maison.stat.with_phone":      {"pt": "Com telefone",               "en": "With phone"},
+    "maison.stat.avg_score":       {"pt": "Score médio",                "en": "Avg. score"},
+
+    # Section markers
+    "marker.daily_view":           {"pt": "Vista do dia",               "en": "Daily view"},
+    "marker.daily_view.caption":   {"pt": "Indicadores principais",     "en": "Key indicators"},
+    "marker.lots":                 {"pt": "Lots du jour",               "en": "Lots du jour"},
+    "marker.lots.caption":         {"pt": "Top accionáveis · ordem de prioridade",
+                                    "en": "Top actionable · priority order"},
+    "marker.cartography":          {"pt": "Carta geográfica",           "en": "Cartography"},
+    "marker.cartography.caption":  {"pt": "Densidade · score · €/m²",   "en": "Density · score · €/m²"},
+
+    # ── Quick actions strip ───────────────────────────────────────────────
+    "qa.heading":                  {"pt": "ATALHOS DO DIA",             "en": "DAILY SHORTCUTS"},
+    "qa.hot":                      {"pt": "🔥  Ir para HOT Focus",      "en": "🔥  Open HOT Focus"},
+    "qa.update":                   {"pt": "⟳  Atualizar dados agora",   "en": "⟳  Refresh data now"},
+    "qa.update.spinner":           {"pt": "A executar pipeline (scrape · process · score)…",
+                                    "en": "Running pipeline (scrape · process · score)…"},
+    "qa.update.success":           {"pt": "✓  {a} novos · {b} actualizados",
+                                    "en": "✓  {a} new · {b} updated"},
+    "qa.export":                   {"pt": "📋  Exportar lista HOT",     "en": "📋  Export HOT list"},
+    "qa.export.toast":             {"pt": "✓  Ficheiro: {p}",           "en": "✓  File: {p}"},
+    "qa.map":                      {"pt": "📊  Mapa & inteligência",    "en": "📊  Map & intelligence"},
+
+    # ── Empty state ───────────────────────────────────────────────────────
+    "empty.eyebrow":               {"pt": "Pronto para começar",        "en": "Ready to begin"},
+    "empty.title.before":          {"pt": "Lança o ",                   "en": "Start the "},
+    "empty.title.em":              {"pt": "motor",                      "en": "engine"},
+    "empty.title.after":           {"pt": ".",                          "en": "."},
+    "empty.deck":                  {"pt": "A base de dados está vazia — ainda não há leads para mostrar. "
+                                          "O processo é simples: o motor varre os portais, identifica "
+                                          "proprietários directos e traz contactos com telefone para a tua agenda.",
+                                    "en": "The database is empty — no leads to show yet. The process is simple: "
+                                          "the engine sweeps the portals, identifies direct owners, and brings "
+                                          "phone contacts to your agenda."},
+    "empty.step1.title":           {"pt": "Atualiza dados",             "en": "Refresh data"},
+    "empty.step1.body":            {"pt": "Carrega <em>\"Atualizar dados agora\"</em> acima. O scrape leva ~5–10 min na primeira vez.",
+                                    "en": "Hit <em>\"Refresh data now\"</em> above. The first scrape takes ~5–10 min."},
+    "empty.step2.title":           {"pt": "Vai a HOT Focus",            "en": "Go to HOT Focus"},
+    "empty.step2.body":            {"pt": "Os leads mais quentes do dia aparecem ranked por urgência. Liga primeiro aos do topo.",
+                                    "en": "The day's hottest leads appear ranked by urgency. Call the top ones first."},
+    "empty.step3.title":           {"pt": "Move no CRM",                "en": "Move in the CRM"},
+    "empty.step3.body":            {"pt": "Cada lead contactado avança no funil — visitas, propostas, ganhos.",
+                                    "en": "Each contacted lead advances through the funnel — visits, offers, wins."},
+
+    # ── Footer ────────────────────────────────────────────────────────────
+    "footer.lemma":                {"pt": "Maison de l'immobilier",     "en": "Maison de l'immobilier"},
+
+    # ── Mini hero per page (eyebrow · title · deck · byline_caption) ──────
+    "page.hot.eyebrow":            {"pt": "Hot Focus · A próxima ligação",
+                                    "en": "Hot Focus · The next call"},
+    "page.hot.title.before":       {"pt": "O telefonema ",              "en": "The right "},
+    "page.hot.title.em":           {"pt": "certo",                      "en": "call"},
+    "page.hot.title.after":        {"pt": ", agora.",                   "en": ", right now."},
+    "page.hot.deck":               {"pt": "Top 50 leads ordenados por urgência composta — score, queda de preço, "
+                                          "dias parado e qualidade de contacto cruzados num só ranking. Os botões "
+                                          "abaixo abrem chamada, WhatsApp ou email directamente.",
+                                    "en": "Top 50 leads ranked by composite urgency — score, price drops, days "
+                                          "stalled and contact quality merged into one ranking. The buttons below "
+                                          "open call, WhatsApp or email directly."},
+    "page.hot.byline":             {"pt": "Acção imediata",              "en": "Immediate action"},
+
+    "page.opportunities.eyebrow":  {"pt": "Mercado · Catálogo do dia",  "en": "Market · Catalogue of the day"},
+    "page.opportunities.title.before": {"pt": "Ranking de ",             "en": "Ranking of "},
+    "page.opportunities.title.em":     {"pt": "oportunidades",           "en": "opportunities"},
+    "page.opportunities.title.after":  {"pt": ".",                       "en": "."},
+    "page.opportunities.deck":     {"pt": "Todas as propriedades detectadas, classificadas pela pontuação composta. "
+                                          "Filtra por classificação, fase do funil e tipo de vendedor para refinar a tua selecção.",
+                                    "en": "Every detected property, ranked by composite score. Filter by tier, "
+                                          "funnel stage and seller type to refine your selection."},
+    "page.opportunities.byline":   {"pt": "Todo o stock",                "en": "All stock"},
+
+    "page.crm.eyebrow":            {"pt": "Gestão · Acompanhamento",    "en": "Management · Tracking"},
+    "page.crm.title.before":       {"pt": "Pipeline de ",                "en": "Sales "},
+    "page.crm.title.em":           {"pt": "negociação",                  "en": "pipeline"},
+    "page.crm.title.after":        {"pt": ".",                           "en": "."},
+    "page.crm.deck":               {"pt": "Cada lead em fase própria — contactos feitos, visitas marcadas, "
+                                          "propostas em curso, ganhos. Mover é arrastar; tudo guardado em histórico.",
+                                    "en": "Every lead in its own stage — contacted, visits booked, offers in motion, "
+                                          "won. Moving is dragging; everything saved in history."},
+    "page.crm.byline":             {"pt": "Coluna por coluna",           "en": "Column by column"},
+
+    "page.activity.eyebrow":       {"pt": "Atividade · Cronologia",      "en": "Activity · Timeline"},
+    "page.activity.title.before":  {"pt": "O que ",                      "en": "What "},
+    "page.activity.title.em":      {"pt": "aconteceu",                   "en": "happened"},
+    "page.activity.title.after":   {"pt": " hoje.",                      "en": " today."},
+    "page.activity.deck":          {"pt": "Novos leads que entraram, quedas de preço detectadas, "
+                                          "anúncios re-publicados, listagens sumidas e follow-ups gerados. A história "
+                                          "contínua da operação, vista pela ordem em que foi acontecendo.",
+                                    "en": "New leads that came in, price drops detected, ads re-posted, "
+                                          "listings vanished, follow-ups generated. The continuous story of the "
+                                          "operation, in the order it happened."},
+    "page.activity.byline":        {"pt": "Diário",                      "en": "Diary"},
+
+    "page.map.eyebrow":            {"pt": "Mapa & BI · Visão de cima",   "en": "Map & BI · From above"},
+    "page.map.title.before":       {"pt": "A última ",                   "en": "The past "},
+    "page.map.title.em":           {"pt": "semana",                      "en": "week"},
+    "page.map.title.after":        {"pt": ", em panorama.",              "en": ", in panorama."},
+    "page.map.deck":               {"pt": "Funil, geografia das oportunidades e ranking das agências cruzados "
+                                          "num só lugar. Os 7 dias mais recentes — o que entrou, o que aqueceu, o que mexeu de preço.",
+                                    "en": "Funnel, opportunity geography and agency ranking merged into one "
+                                          "place. The most recent 7 days — what came in, what heated up, what shifted in price."},
+    "page.map.byline":             {"pt": "Inteligência consolidada",    "en": "Consolidated intelligence"},
+    "page.map.stat.new7d":         {"pt": "Novos 7d",                    "en": "New (7d)"},
+    "page.map.stat.newhot":        {"pt": "Novos HOT",                   "en": "New HOT"},
+    "page.map.stat.drops":         {"pt": "Quedas preço",                "en": "Price drops"},
+    "page.map.stat.super":         {"pt": "Super-sellers",               "en": "Super-sellers"},
+    "page.map.stat.contacted":     {"pt": "Contactados",                 "en": "Contacted"},
+
+    "page.premarket.eyebrow":      {"pt": "Inteligência · Sinais antecipados",
+                                    "en": "Intelligence · Early signals"},
+    "page.premarket.title.before": {"pt": "Pré-mercado ",                 "en": "Silent "},
+    "page.premarket.title.em":     {"pt": "silencioso",                   "en": "pre-market"},
+    "page.premarket.title.after":  {"pt": ".",                            "en": "."},
+    "page.premarket.deck":         {"pt": "Proprietários que podem vender antes de pôr o anúncio — licenças de "
+                                          "obras emitidas, remodelações em curso, mudanças profissionais. Apanhar antes "
+                                          "do mercado é a vantagem competitiva.",
+                                    "en": "Owners who may sell before listing — building permits, ongoing "
+                                          "renovations, professional moves. Catching them before the market is the edge."},
+    "page.premarket.byline":       {"pt": "Antes da concorrência",       "en": "Ahead of competitors"},
+
+    "page.system.eyebrow":         {"pt": "Sistema · Sala de máquinas",  "en": "System · Engine room"},
+    "page.system.title.before":    {"pt": "Saúde ",                      "en": "Operational "},
+    "page.system.title.em":        {"pt": "operacional",                 "en": "health"},
+    "page.system.title.after":     {"pt": ".",                           "en": "."},
+    "page.system.deck":            {"pt": "Estado dos últimos runs do scrapper, backups da base de dados, "
+                                          "jobs agendados e fila de processamento. Tudo o que mantém a operação a respirar.",
+                                    "en": "Last scraper runs, database backups, scheduled jobs and processing "
+                                          "queue. Everything that keeps the operation breathing."},
+    "page.system.byline":          {"pt": "Diagnóstico",                 "en": "Diagnostics"},
+
+    "page.engine_page.eyebrow":    {"pt": "Operações · Bastidores",      "en": "Operations · Backstage"},
+    "page.engine_page.title.before": {"pt": "O ",                         "en": "The "},
+    "page.engine_page.title.em":     {"pt": "motor",                      "en": "engine"},
+    "page.engine_page.title.after":  {"pt": ".",                          "en": "."},
+    "page.engine_page.deck":       {"pt": "Recolha automática · normalização · identificação de proprietários "
+                                          "· scoring · alertas HOT. Os engrenagens que correm enquanto a equipa dorme.",
+                                    "en": "Automatic collection · normalisation · owner identification · "
+                                          "scoring · HOT alerts. The gears that turn while the team sleeps."},
+    "page.engine_page.byline":     {"pt": "Pipeline interno",             "en": "Internal pipeline"},
+
+    "page.export.eyebrow":         {"pt": "Trocas · Entre sistemas",     "en": "Exchange · Between systems"},
+    "page.export.title.before":    {"pt": "Exportar & ",                 "en": "Export & "},
+    "page.export.title.em":        {"pt": "importar",                    "en": "import"},
+    "page.export.title.after":     {"pt": ".",                           "en": "."},
+    "page.export.deck":            {"pt": "Listas prontas para entregar ao cliente, ou contactos antigos do CRM "
+                                          "para alimentar o motor. Os formatos certos para cada caso.",
+                                    "en": "Lists ready to deliver to clients, or older CRM contacts to feed the "
+                                          "engine. The right format for each case."},
+    "page.export.byline":          {"pt": "CSV · JSON · Excel",          "en": "CSV · JSON · Excel"},
+}
+
+
+def t(key: str, **fmt) -> str:
+    """Translate a key using the language stored in session_state.
+    Falls back to the key itself when missing — surfaces typos quickly.
+    Optional kwargs let callers do `.format(**fmt)` style interpolation.
+    """
+    lang = st.session_state.get("__lang", "pt")
+    entry = TRANSLATIONS.get(key, {})
+    raw = entry.get(lang) or entry.get("pt") or key
+    if fmt:
+        try:
+            return raw.format(**fmt)
+        except Exception:
+            return raw
+    return raw
+
+
 # ─── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Patabrava · Lead Intelligence",
@@ -1878,7 +2104,7 @@ html { scroll-behavior: smooth; }
     position: relative;
 }
 .qa-strip::before {
-    content: "ATALHOS DO DIA";
+    content: attr(data-eyebrow);
     position: absolute;
     top: -8px;
     left: 18px;
@@ -2012,6 +2238,44 @@ html { scroll-behavior: smooth; }
     font-size: 12px;
     color: var(--smoke);
     line-height: 1.55;
+}
+
+/* ──── Language toggle (PT / EN) at top of sidebar ──────────────────────── */
+.lang-toggle {
+    display: block;
+    padding: 8px 4px 4px;
+    margin: 4px 0 8px;
+    border-bottom: 1px solid rgba(221,194,105,.10);
+}
+.lang-toggle + div [data-testid="stBaseButton-secondary"],
+.lang-toggle + div [data-testid="stBaseButton-primary"] {
+    background: transparent !important;
+    border: 1px solid rgba(221,194,105,.18) !important;
+    border-radius: 999px !important;
+    color: var(--smoke) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: .12em !important;
+    padding: 4px 10px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    box-shadow: none !important;
+    transition: background .18s, border-color .18s, color .18s;
+}
+.lang-toggle + div [data-testid="stBaseButton-secondary"]:hover {
+    background: rgba(221,194,105,.06) !important;
+    border-color: rgba(221,194,105,.32) !important;
+    color: var(--ice) !important;
+}
+.lang-toggle + div [data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%) !important;
+    border-color: transparent !important;
+    color: var(--ink-00) !important;
+    font-weight: 700 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 4px 10px -4px rgba(221,194,105,.5) !important;
 }
 
 /* ──── Sidebar navigation grouped by purpose ───────────────────────────── */
@@ -3803,45 +4067,63 @@ def load_stats():
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
+    # ── Language toggle (PT / EN) — appears above the brand mark ──────────
+    if "__lang" not in st.session_state:
+        st.session_state["__lang"] = "pt"
+    st.markdown('<div class="lang-toggle">', unsafe_allow_html=True)
+    _l1, _l2 = st.columns(2)
+    with _l1:
+        if st.button("🇵🇹  PT", key="lang_pt_btn", use_container_width=True,
+                     type="primary" if st.session_state["__lang"] == "pt" else "secondary"):
+            st.session_state["__lang"] = "pt"
+            st.rerun()
+    with _l2:
+        if st.button("🇬🇧  EN", key="lang_en_btn", use_container_width=True,
+                     type="primary" if st.session_state["__lang"] == "en" else "secondary"):
+            st.session_state["__lang"] = "en"
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
     _logo_uri = _asset_b64(_LOGO2X_PATH if _LOGO2X_PATH.exists() else _LOGO_PATH)
     _logo_html = (
         f'<img src="{_logo_uri}" alt="Patabrava" class="patabrava-logo-img" />'
         if _logo_uri else
         '<div class="patabrava-logo">◆</div>'
     )
+    _tag_pt = "Lead intelligence imobiliária"
+    _tag_en = "Real-estate lead intelligence"
+    _tag = _tag_en if st.session_state["__lang"] == "en" else _tag_pt
     st.markdown(
         '<div class="patabrava-mark" style="padding:0 16px 14px;margin:14px 0 12px;">'
         f'  {_logo_html}'
-        '  <div class="patabrava-tag">Lead intelligence imobiliária</div>'
+        f'  <div class="patabrava-tag">{_tag}</div>'
         f'  <div class="patabrava-version">{datetime.now().strftime("%d %b · %H:%M")}</div>'
         '</div>',
         unsafe_allow_html=True,
     )
 
-    # ── Navigation: grouped by purpose, not flat ──────────────────────────
-    # Each group represents a phase of the operator's day.
-    #   I.  Caça        — find leads (top of funnel)
-    #   II. Venda       — work leads (middle of funnel)
-    #   III.Inteligência — analyse (strategic)
-    #   IV. Motor       — operations (back-office)
-    NAV_GROUPS = [
-        ("I",   "Caça",         "Encontrar leads", [
-            ("&#128202;  Dashboard",      "Vista do dia"),
-            ("&#128293;  HOT Focus",      "Acção imediata"),
-            ("&#128268;  Pre-Market",     "Antes do mercado"),
+    # ── Navigation: grouped by purpose, not flat (i18n-aware) ─────────────
+    # Each item carries a stable page_id (used by the if/elif chain) and
+    # translation keys for the displayed label + caption.
+    NAV_GROUPS: list[tuple[str, str, str, list[tuple[str, str, str, str]]]] = [
+        ("I",   "nav.hunt.title",   "nav.hunt.caption", [
+            # (page_id,                   emoji,        label_key,                caption_key)
+            ("&#128202;  Dashboard",      "&#128202;",  "nav.dashboard.label",    "nav.dashboard.caption"),
+            ("&#128293;  HOT Focus",      "&#128293;",  "nav.hot.label",          "nav.hot.caption"),
+            ("&#128268;  Pre-Market",     "&#128268;",  "nav.premarket.label",    "nav.premarket.caption"),
         ]),
-        ("II",  "Venda",        "Trabalhar leads", [
-            ("&#127919;  Oportunidades",  "Stock completo"),
-            ("&#128203;  CRM",            "Pipeline de negociação"),
-            ("&#128240;  Atividade",      "Cronologia"),
+        ("II",  "nav.sell.title",   "nav.sell.caption", [
+            ("&#127919;  Oportunidades",  "&#127919;",  "nav.opportunities.label","nav.opportunities.caption"),
+            ("&#128203;  CRM",            "&#128203;",  "nav.crm.label",          "nav.crm.caption"),
+            ("&#128240;  Atividade",      "&#128240;",  "nav.activity.label",     "nav.activity.caption"),
         ]),
-        ("III", "Inteligência", "Análise estratégica", [
-            ("&#128205;  Mapa & BI",      "Geografia & funil"),
+        ("III", "nav.intel.title",  "nav.intel.caption", [
+            ("&#128205;  Mapa & BI",      "&#128205;",  "nav.map.label",          "nav.map.caption"),
         ]),
-        ("IV",  "Motor",        "Bastidores", [
-            ("&#129518;  Sistema",        "Saúde operacional"),
-            ("&#9881;  Motor",            "Pipeline interno"),
-            ("&#128228;  Exportar",       "Trocas de dados"),
+        ("IV",  "nav.engine.title", "nav.engine.caption", [
+            ("&#129518;  Sistema",        "&#129518;",  "nav.system.label",       "nav.system.caption"),
+            ("&#9881;  Motor",            "&#9881;",    "nav.engine_page.label",  "nav.engine_page.caption"),
+            ("&#128228;  Exportar",       "&#128228;",  "nav.export.label",       "nav.export.caption"),
         ]),
     ]
 
@@ -3851,29 +4133,28 @@ with st.sidebar:
     page = st.session_state["__page"]
 
     st.markdown('<div class="nav-wrap">', unsafe_allow_html=True)
-    for roman, group_name, group_caption, items in NAV_GROUPS:
+    for roman, group_title_key, group_caption_key, items in NAV_GROUPS:
         st.markdown(
             f'<div class="nav-group">'
             f'  <div class="nav-group__roman">{roman}</div>'
             f'  <div class="nav-group__meta">'
-            f'    <div class="nav-group__title">{group_name}</div>'
-            f'    <div class="nav-group__caption">{group_caption}</div>'
+            f'    <div class="nav-group__title">{t(group_title_key)}</div>'
+            f'    <div class="nav-group__caption">{t(group_caption_key)}</div>'
             f'  </div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-        for label, hint in items:
-            is_active = (label == page)
-            btn_label = label  # already includes emoji entity
-            # Use type="primary" for active so we can style it via CSS
+        for page_id, emoji, label_key, caption_key in items:
+            is_active = (page_id == page)
+            btn_label = f"{emoji}  {t(label_key)}"
             if st.button(
                 btn_label,
-                key=f"nav_{label}",
+                key=f"nav_{page_id}",
                 use_container_width=True,
                 type="primary" if is_active else "secondary",
-                help=hint,
+                help=t(caption_key),
             ):
-                st.session_state["__page"] = label
+                st.session_state["__page"] = page_id
                 st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -4116,8 +4397,8 @@ if page == "&#128202;  Dashboard":
                   "JUL":"JUL","AUG":"AGO","SEP":"SET","OCT":"OUT","NOV":"NOV","DEC":"DEZ"}
     for en, pt in _pt_months.items():
         _edition_label = _edition_label.replace(en, pt)
-    _hot_sub  = f"+ {_hot_today} novos hoje" if _hot_today else "sem novos hoje"
-    _added_sub = f"+ {_added_today} hoje" if _added_today else "—"
+    _hot_sub  = (t("maison.figure.sub.new",  n=_hot_today) if _hot_today
+                 else t("maison.figure.sub.none"))
 
     st.markdown(
         f"""
@@ -4127,22 +4408,20 @@ if page == "&#128202;  Dashboard":
           <div class="maison-rule-bot"></div>
           <div class="maison-grid">
             <div class="maison-col-left">
-              <div class="maison-eyebrow">Maison &middot; Angariação Lisboa</div>
-              <h1 class="maison-title">Patabrava<br/><em>Maison de l'immobilier</em></h1>
-              <p class="maison-deck has-dropcap">Lead intelligence em tempo real. Cada manhã, uma nova
-                selecção de imóveis directamente do proprietário — para a equipa angariar antes
-                de qualquer outra agência da capital.</p>
+              <div class="maison-eyebrow">{t("maison.eyebrow")}</div>
+              <h1 class="maison-title">{t("maison.title.line1")}<br/><em>{t("maison.title.line2")}</em></h1>
+              <p class="maison-deck has-dropcap">{t("maison.deck")}</p>
               <div class="maison-byline">
                 <span>{_edition_label}</span>
                 <span>OLX &middot; Imovirtual</span>
-                <span>{total} oportunidades activas</span>
+                <span>{t("maison.byline.opps", n=total)}</span>
               </div>
             </div>
             <div class="maison-numerals">
               <div class="maison-figure">
                 <div class="maison-figure-num is-hot has-shimmer">{hot_n}</div>
                 <div class="maison-figure-meta">
-                  <div class="maison-figure-lbl">HOT na agenda</div>
+                  <div class="maison-figure-lbl">{t("maison.figure.lbl")}</div>
                   <div class="maison-figure-sub">{_hot_sub}</div>
                 </div>
               </div>
@@ -4150,15 +4429,15 @@ if page == "&#128202;  Dashboard":
               <div class="maison-stats">
                 <div>
                   <div class="maison-stat-num is-warm">{warm_n}</div>
-                  <div class="maison-stat-lbl">Warm</div>
+                  <div class="maison-stat-lbl">{t("maison.stat.warm")}</div>
                 </div>
                 <div>
                   <div class="maison-stat-num is-mint">{_phone_n}</div>
-                  <div class="maison-stat-lbl">Com telefone</div>
+                  <div class="maison-stat-lbl">{t("maison.stat.with_phone")}</div>
                 </div>
                 <div>
                   <div class="maison-stat-num">{avg_s}</div>
-                  <div class="maison-stat-lbl">Score médio</div>
+                  <div class="maison-stat-lbl">{t("maison.stat.avg_score")}</div>
                 </div>
               </div>
             </div>
@@ -4166,10 +4445,10 @@ if page == "&#128202;  Dashboard":
         </section>
         <div class="section-marker">
           <div class="section-marker__num">I</div>
-          <div class="section-marker__title">Vista do dia</div>
+          <div class="section-marker__title">{t("marker.daily_view")}</div>
           <div class="section-marker__rule"></div>
           <div class="section-marker__fleuron">❦</div>
-          <div class="section-marker__caption">Indicadores principais</div>
+          <div class="section-marker__caption">{t("marker.daily_view.caption")}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -4178,35 +4457,35 @@ if page == "&#128202;  Dashboard":
     # ── Quick actions strip — the operator's "next step" toolbar ──────────
     # 4 columns of compact CTAs that map to the most common daily actions.
     # All buttons hook into existing flows (page change / pipeline run / export).
-    st.markdown('<div class="qa-strip">', unsafe_allow_html=True)
+    st.markdown(f'<div class="qa-strip" data-eyebrow="{t("qa.heading")}">', unsafe_allow_html=True)
     qa1, qa2, qa3, qa4 = st.columns(4)
     with qa1:
-        if st.button("🔥  Ir para HOT Focus", key="qa_hot", use_container_width=True, type="primary"):
+        if st.button(t("qa.hot"), key="qa_hot", use_container_width=True, type="primary"):
             st.session_state["__page"] = "&#128293;  HOT Focus"
             st.rerun()
     with qa2:
-        if st.button("⟳  Atualizar dados agora", key="qa_run", use_container_width=True):
-            with st.spinner("A executar pipeline (scrape · process · score)…"):
+        if st.button(t("qa.update"), key="qa_run", use_container_width=True):
+            with st.spinner(t("qa.update.spinner")):
                 try:
                     from pipeline.runner import PipelineRunner
                     from scoring.scorer import Scorer
                     r = PipelineRunner().run_full()
                     Scorer().score_all_pending()
                     st.cache_data.clear()
-                    st.success(f"✓  {r.leads_created} novos · {r.leads_updated} actualizados")
+                    st.success(t("qa.update.success", a=r.leads_created, b=r.leads_updated))
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
     with qa3:
-        if st.button("📋  Exportar lista HOT", key="qa_export", use_container_width=True):
+        if st.button(t("qa.export"), key="qa_export", use_container_width=True):
             try:
                 from reports.generator import ReportGenerator
                 path = ReportGenerator().export_csv(score_min=70)
-                st.toast(f"✓  Ficheiro: {path}", icon="📋")
+                st.toast(t("qa.export.toast", p=path), icon="📋")
             except Exception as e:
                 st.error(f"Erro: {e}")
     with qa4:
-        if st.button("📊  Mapa & inteligência", key="qa_map", use_container_width=True):
+        if st.button(t("qa.map"), key="qa_map", use_container_width=True):
             st.session_state["__page"] = "&#128205;  Mapa & BI"
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -4214,31 +4493,26 @@ if page == "&#128202;  Dashboard":
     # ── Empty state — guided onboarding when there's no real data yet ────
     if total == 0:
         st.markdown(
-            """
+            f"""
             <section class="empty-stage">
-              <div class="empty-stage__eyebrow">Pronto para começar</div>
-              <h2 class="empty-stage__title">Lança o <em>motor</em>.</h2>
-              <p class="empty-stage__deck">A base de dados está vazia — ainda não há leads para
-                mostrar. O processo é simples: o motor varre os portais, identifica proprietários
-                directos e traz contactos com telefone para a tua agenda.</p>
+              <div class="empty-stage__eyebrow">{t("empty.eyebrow")}</div>
+              <h2 class="empty-stage__title">{t("empty.title.before")}<em>{t("empty.title.em")}</em>{t("empty.title.after")}</h2>
+              <p class="empty-stage__deck">{t("empty.deck")}</p>
               <div class="empty-stage__steps">
                 <div class="empty-stage__step">
                   <div class="empty-stage__step-num">i</div>
-                  <div class="empty-stage__step-title">Atualiza dados</div>
-                  <div class="empty-stage__step-body">Carrega <em>"Atualizar dados agora"</em>
-                  acima. O scrape leva ~5–10 min na primeira vez.</div>
+                  <div class="empty-stage__step-title">{t("empty.step1.title")}</div>
+                  <div class="empty-stage__step-body">{t("empty.step1.body")}</div>
                 </div>
                 <div class="empty-stage__step">
                   <div class="empty-stage__step-num">ii</div>
-                  <div class="empty-stage__step-title">Vai a HOT Focus</div>
-                  <div class="empty-stage__step-body">Os leads mais quentes do dia aparecem
-                  ranked por urgência. Liga primeiro aos do topo.</div>
+                  <div class="empty-stage__step-title">{t("empty.step2.title")}</div>
+                  <div class="empty-stage__step-body">{t("empty.step2.body")}</div>
                 </div>
                 <div class="empty-stage__step">
                   <div class="empty-stage__step-num">iii</div>
-                  <div class="empty-stage__step-title">Move no CRM</div>
-                  <div class="empty-stage__step-body">Cada lead contactado avança no funil
-                  — visitas, propostas, ganhos.</div>
+                  <div class="empty-stage__step-title">{t("empty.step3.title")}</div>
+                  <div class="empty-stage__step-body">{t("empty.step3.body")}</div>
                 </div>
               </div>
             </section>
@@ -4736,13 +5010,12 @@ if page == "&#128202;  Dashboard":
 elif page == "&#127919;  Oportunidades":
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Mercado &middot; Catálogo do dia</div>'
-        '  <h1 class="maison-title">Ranking de <em>oportunidades</em>.</h1>'
-        '  <p class="maison-deck">Todas as propriedades detectadas, classificadas pela pontuação composta. '
-        '  Filtra por classificação, fase do funil e tipo de vendedor para refinar a tua selecção.</p>'
-        '  <div class="maison-byline"><span>III &middot; Oportunidades</span><span>Todo o stock</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.opportunities.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.opportunities.title.before")}<em>{t("page.opportunities.title.em")}</em>{t("page.opportunities.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.opportunities.deck")}</p>'
+        f'  <div class="maison-byline"><span>III &middot; {t("nav.opportunities.label")}</span><span>{t("page.opportunities.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -4976,13 +5249,12 @@ elif page == "&#127919;  Oportunidades":
 elif page == "&#128203;  CRM":
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Gestão &middot; Acompanhamento</div>'
-        '  <h1 class="maison-title">Pipeline de <em>negociação</em>.</h1>'
-        '  <p class="maison-deck">Cada lead em fase própria — contactos feitos, visitas marcadas, '
-        '  propostas em curso, ganhos. Mover é arrastar; tudo guardado em histórico.</p>'
-        '  <div class="maison-byline"><span>IV &middot; CRM</span><span>Coluna por coluna</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.crm.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.crm.title.before")}<em>{t("page.crm.title.em")}</em>{t("page.crm.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.crm.deck")}</p>'
+        f'  <div class="maison-byline"><span>IV &middot; CRM</span><span>{t("page.crm.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -5242,14 +5514,12 @@ elif page == "&#128293;  HOT Focus":
     from storage.models import Lead as _Lead
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Hot Focus &middot; A próxima ligação</div>'
-        '  <h1 class="maison-title">O telefonema <em>certo</em>, agora.</h1>'
-        '  <p class="maison-deck">Top 50 leads ordenados por urgência composta — score, queda de preço, '
-        '  dias parado e qualidade de contacto cruzados num só ranking. Os botões abaixo abrem chamada, '
-        '  WhatsApp ou email directamente.</p>'
-        '  <div class="maison-byline"><span>II &middot; Hot Focus</span><span>Acção imediata</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.hot.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.hot.title.before")}<em>{t("page.hot.title.em")}</em>{t("page.hot.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.hot.deck")}</p>'
+        f'  <div class="maison-byline"><span>II &middot; HOT Focus</span><span>{t("page.hot.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -5365,13 +5635,12 @@ elif page == "&#129518;  Sistema":
     from datetime import datetime as _dt
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Sistema &middot; Sala de máquinas</div>'
-        '  <h1 class="maison-title">Saúde <em>operacional</em>.</h1>'
-        '  <p class="maison-deck">Estado dos últimos runs do scrapper, backups da base de dados, '
-        '  jobs agendados e fila de processamento. Tudo o que mantém a operação a respirar.</p>'
-        '  <div class="maison-byline"><span>VIII &middot; Sistema</span><span>Diagnóstico</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.system.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.system.title.before")}<em>{t("page.system.title.em")}</em>{t("page.system.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.system.deck")}</p>'
+        f'  <div class="maison-byline"><span>VIII &middot; {t("nav.system.label")}</span><span>{t("page.system.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -5501,14 +5770,12 @@ elif page == "&#128240;  Atividade":
     from datetime import datetime as _dt, timedelta as _td
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Atividade &middot; Cronologia</div>'
-        '  <h1 class="maison-title">O que <em>aconteceu</em> hoje.</h1>'
-        '  <p class="maison-deck">Novos leads que entraram, quedas de preço detectadas, '
-        '  anúncios re-publicados, listagens sumidas e follow-ups gerados. A história contínua '
-        '  da operação, vista pela ordem em que foi acontecendo.</p>'
-        '  <div class="maison-byline"><span>V &middot; Atividade</span><span>Diário</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.activity.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.activity.title.before")}<em>{t("page.activity.title.em")}</em>{t("page.activity.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.activity.deck")}</p>'
+        f'  <div class="maison-byline"><span>V &middot; {t("nav.activity.label")}</span><span>{t("page.activity.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -5621,18 +5888,17 @@ elif page == "&#128205;  Mapa & BI":
 
     st.markdown(
         f'<section class="maison maison--mini">'
-        f'  <div class="maison-eyebrow">Mapa &amp; BI &middot; Visão de cima</div>'
-        f'  <h1 class="maison-title">A última <em>semana</em>, em panorama.</h1>'
-        f'  <p class="maison-deck">Funil, geografia das oportunidades e ranking das agências cruzados '
-        f'  num só lugar. Os 7 dias mais recentes — o que entrou, o que aqueceu, o que mexeu de preço.</p>'
+        f'  <div class="maison-eyebrow">{t("page.map.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.map.title.before")}<em>{t("page.map.title.em")}</em>{t("page.map.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.map.deck")}</p>'
         f'  <div class="maison-stats" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-top:var(--sp-4);">'
-        f'    <div><div class="maison-stat-num">{summary["new_leads_7d"]}</div><div class="maison-stat-lbl">Novos 7d</div></div>'
-        f'    <div><div class="maison-stat-num is-rose">{summary["new_hot_7d"]}</div><div class="maison-stat-lbl">Novos HOT</div></div>'
-        f'    <div><div class="maison-stat-num is-warm">{summary["price_drops_7d"]}</div><div class="maison-stat-lbl">Quedas preço</div></div>'
-        f'    <div><div class="maison-stat-num">{summary["super_sellers"]}</div><div class="maison-stat-lbl">Super-sellers</div></div>'
-        f'    <div><div class="maison-stat-num is-mint">{summary["contacted"]}</div><div class="maison-stat-lbl">Contactados</div></div>'
+        f'    <div><div class="maison-stat-num">{summary["new_leads_7d"]}</div><div class="maison-stat-lbl">{t("page.map.stat.new7d")}</div></div>'
+        f'    <div><div class="maison-stat-num is-rose">{summary["new_hot_7d"]}</div><div class="maison-stat-lbl">{t("page.map.stat.newhot")}</div></div>'
+        f'    <div><div class="maison-stat-num is-warm">{summary["price_drops_7d"]}</div><div class="maison-stat-lbl">{t("page.map.stat.drops")}</div></div>'
+        f'    <div><div class="maison-stat-num">{summary["super_sellers"]}</div><div class="maison-stat-lbl">{t("page.map.stat.super")}</div></div>'
+        f'    <div><div class="maison-stat-num is-mint">{summary["contacted"]}</div><div class="maison-stat-lbl">{t("page.map.stat.contacted")}</div></div>'
         f'  </div>'
-        f'  <div class="maison-byline"><span>VI &middot; Mapa &amp; BI</span><span>Inteligência consolidada</span></div>'
+        f'  <div class="maison-byline"><span>VI &middot; {t("nav.map.label")}</span><span>{t("page.map.byline")}</span></div>'
         f'</section>',
         unsafe_allow_html=True,
     )
@@ -5846,14 +6112,12 @@ elif page == "&#128205;  Mapa & BI":
 elif page == "&#128268;  Pre-Market":
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Inteligência &middot; Sinais antecipados</div>'
-        '  <h1 class="maison-title">Pré-mercado <em>silencioso</em>.</h1>'
-        '  <p class="maison-deck">Proprietários que podem vender antes de pôr o anúncio — licenças de '
-        '  obras emitidas, remodelações em curso, mudanças profissionais. Apanhar antes do mercado é a '
-        '  vantagem competitiva.</p>'
-        '  <div class="maison-byline"><span>VII &middot; Pre-Market</span><span>Antes da concorrência</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.premarket.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.premarket.title.before")}<em>{t("page.premarket.title.em")}</em>{t("page.premarket.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.premarket.deck")}</p>'
+        f'  <div class="maison-byline"><span>VII &middot; {t("nav.premarket.label")}</span><span>{t("page.premarket.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -6111,13 +6375,12 @@ elif page == "&#128268;  Pre-Market":
 elif page == "&#9881;  Motor":
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Operações &middot; Bastidores</div>'
-        '  <h1 class="maison-title">O <em>motor</em>.</h1>'
-        '  <p class="maison-deck">Recolha automática &middot; normalização &middot; identificação de proprietários '
-        '  &middot; scoring &middot; alertas HOT. Os engrenagens que correm enquanto a equipa dorme.</p>'
-        '  <div class="maison-byline"><span>IX &middot; Motor</span><span>Pipeline interno</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.engine_page.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.engine_page.title.before")}<em>{t("page.engine_page.title.em")}</em>{t("page.engine_page.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.engine_page.deck")}</p>'
+        f'  <div class="maison-byline"><span>IX &middot; {t("nav.engine_page.label")}</span><span>{t("page.engine_page.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -6522,13 +6785,12 @@ elif page == "&#9881;  Motor":
 elif page == "&#128228;  Exportar":
 
     st.markdown(
-        '<section class="maison maison--mini">'
-        '  <div class="maison-eyebrow">Trocas &middot; Entre sistemas</div>'
-        '  <h1 class="maison-title">Exportar &amp; <em>importar</em>.</h1>'
-        '  <p class="maison-deck">Listas prontas para entregar ao cliente, ou contactos antigos do CRM '
-        '  para alimentar o motor. Os formatos certos para cada caso.</p>'
-        '  <div class="maison-byline"><span>X &middot; Trocas</span><span>CSV &middot; JSON &middot; Excel</span></div>'
-        '</section>',
+        f'<section class="maison maison--mini">'
+        f'  <div class="maison-eyebrow">{t("page.export.eyebrow")}</div>'
+        f'  <h1 class="maison-title">{t("page.export.title.before")}<em>{t("page.export.title.em")}</em>{t("page.export.title.after")}</h1>'
+        f'  <p class="maison-deck">{t("page.export.deck")}</p>'
+        f'  <div class="maison-byline"><span>X &middot; {t("nav.export.label")}</span><span>{t("page.export.byline")}</span></div>'
+        f'</section>',
         unsafe_allow_html=True,
     )
 
@@ -6740,17 +7002,17 @@ elif page == "&#128228;  Exportar":
 #  EDITORIAL FOOTER — appears once on every page (outside any if/elif).
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown(
-    '<footer class="maison-footer">'
-    '  <div class="maison-footer__mark">Patabrava</div>'
-    '  <div class="maison-footer__row">'
-    '    <span>Lisboa</span>'
-    '    <span>Maison de l&#39;immobilier</span>'
-    '    <span>MMXXVI</span>'
-    '  </div>'
-    '  <div class="maison-footer__addr">'
-    '    Praça de Alvalade 6 &middot; Lisboa &middot; AMI 23783 &middot; '
-    '    <em>+351 938 443 833</em> &middot; office@patabrava.pt'
-    '  </div>'
-    '</footer>',
+    f'<footer class="maison-footer">'
+    f'  <div class="maison-footer__mark">Patabrava</div>'
+    f'  <div class="maison-footer__row">'
+    f'    <span>Lisboa</span>'
+    f'    <span>{t("footer.lemma")}</span>'
+    f'    <span>MMXXVI</span>'
+    f'  </div>'
+    f'  <div class="maison-footer__addr">'
+    f'    Praça de Alvalade 6 &middot; Lisboa &middot; AMI 23783 &middot; '
+    f'    <em>+351 938 443 833</em> &middot; office@patabrava.pt'
+    f'  </div>'
+    f'</footer>',
     unsafe_allow_html=True,
 )
