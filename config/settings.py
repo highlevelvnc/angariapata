@@ -54,9 +54,24 @@ class Settings(BaseSettings):
     headless_browser: bool = True
 
     # ── Zones ────────────────────────────────────────────────────────────────
-    # Patabrava — agência sediada em Alvalade, segmento médio-alto / luxury.
-    # Foco: Lisboa cidade + Linha de Cascais + Oeiras.
-    target_zones: str = "Lisboa,Cascais,Sintra,Oeiras"
+    # Patabrava — agência sediada em Alvalade. Objectivo do scrapper:
+    # encontrar PROPRIETÁRIOS DIRECTOS (FSBO) com telefone — máximo de leads.
+    # Cobertura ampla: Lisboa cidade + 22 freguesias + Linha de Cascais +
+    # Sintra + Oeiras + Margem Sul. As freguesias de Lisboa aparecem como
+    # sweeps paralelos para apanhar a tail acima do cap de 1000 da query
+    # municipal.  Slugs validados em scrapers/imovirtual.py:99.
+    target_zones: str = (
+        "Lisboa,"
+        "Lisboa-Alvalade,Lisboa-Areeiro,Lisboa-Arroios,"
+        "Lisboa-Avenidas-Novas,Lisboa-Beato,Lisboa-Belem,Lisboa-Benfica,"
+        "Lisboa-Campo-de-Ourique,Lisboa-Campolide,Lisboa-Carnide,"
+        "Lisboa-Estrela,Lisboa-Lumiar,Lisboa-Marvila,Lisboa-Misericordia,"
+        "Lisboa-Olivais,Lisboa-Parque-das-Nacoes,Lisboa-Penha-de-Franca,"
+        "Lisboa-Santa-Clara,Lisboa-Santa-Maria-Maior,Lisboa-Santo-Antonio,"
+        "Lisboa-Sao-Domingos-de-Benfica,Lisboa-Sao-Vicente,"
+        "Cascais,Sintra,Oeiras,Amadora,Loures,Odivelas,Mafra,"
+        "Almada,Seixal,Sesimbra,Barreiro,Montijo,Setubal"
+    )
 
     @property
     def zones(self) -> List[str]:
