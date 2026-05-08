@@ -70,6 +70,19 @@ _SUSPICIOUS_SEQUENCES: frozenset[str] = frozenset([
     "123456789", "987654321",
     "123123123", "112112112",
     "999999998", "000000001",
+
+    # ── Portal-injected honeypots (decoys served when bot detection fires) ──
+    # Discovered 2026-05-08 on OLX PT: these 4 numbers appeared in 100% of
+    # /d/anuncio/ pages tested in Cascais. The first 3 are landlines from
+    # Setúbal/Bragança/Castelo Branco districts (geographically irrelevant
+    # for Cascais ads), and 910010010 is a regular-pattern mobile placeholder.
+    # When the scraper picks up any of these, the listing's real owner phone
+    # was hidden behind anti-bot — drop the lead instead of feeding the
+    # operator a useless number.
+    "910010010",   # OLX mobile decoy
+    "264246632",   # OLX support / Setúbal landline (district 264 ≠ Cascais)
+    "273389540",   # OLX support / Bragança landline
+    "274286446",   # OLX support / Castelo Branco landline
 ])
 
 
