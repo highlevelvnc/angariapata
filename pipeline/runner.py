@@ -65,13 +65,33 @@ class PipelineRunner:
     # ── Full pipeline: scrape + process ───────────────────────────────────────
 
     def run_full(self, sources: list[str] = None, zones: list[str] = None) -> PipelineStats:
-        """Scrape all configured sources then process everything in the pipeline."""
+        """Scrape all configured sources then process everything in the pipeline.
+
+        Default sources are derived from config/sources_registry.py — only
+        items with is_active=True AND category in {portal, classified} are
+        considered. This excludes:
+          * bank_reo  — REO listings, not FSBO; requires Playwright stealth
+          * auction   — judicial auctions, not direct-owner outreach
+          * social    — Facebook/LinkedIn need manual login + cookies
+          * marketplace — secondary signals (cars >25k, OLX general)
+        Fixed 2026-05-08: previously hardcoded the full list and silently
+        ignored is_active toggles in the registry, so disabled sources
+        kept being scraped (Idealista DataDome, SAPO 429, Custojusto bug).
+        """
         import time
         from config.settings import settings
+        from config.sources_registry import SOURCE_REGISTRY
         from reports.run_report import RunReportCollector
-        # custojusto excluded — CSR grid requires URL-first strategy (Phase 2)
-        # linkedin excluded from auto-run — requires manual login first (run with sources=["linkedin"])
-        sources = sources or ["olx", "olx_marketplace", "standvirtual", "imovirtual", "idealista", "sapo", "custojusto"]
+
+        if sources is None:
+            sources = [
+                k for k, meta in SOURCE_REGISTRY.items()
+                if meta.is_active and meta.category in ("portal", "classified")
+            ]
+            log.info(
+                "[runner] auto-selected sources from registry: {s}",
+                s=sources,
+            )
         zones = zones or settings.zones
 
         log.info("=== Full pipeline run — sources: {s}, zones: {z} ===", s=sources, z=zones)
