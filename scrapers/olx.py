@@ -125,6 +125,16 @@ ZONE_SLUGS: dict[str, str] = {
 # Set False to disable rental scraping (e.g. during recovery / testing)
 SCRAPE_RENTALS: bool = True
 
+# Search-query keywords used to filter the OLX search by property type.
+# Without these, the scraper hits /imoveis/q-{slug}/ which mixes rooms,
+# garages, parking, commercial spaces and sometimes off-topic ads. Iterating
+# /imoveis/q-{kw}-{slug}/ for a small set of property keywords gives clean
+# real-estate listings only — and as a bonus most listings carry a
+# data-testid="ad-price" tag (rooms typically don't), so price/area parsing
+# rates jump dramatically.  Validated 2026-05-08 against Cascais.
+BUY_KEYWORDS:  tuple[str, ...] = ("apartamento", "moradia")
+RENT_KEYWORDS: tuple[str, ...] = ("apartamento", "moradia")
+
 # When True, the rental ("arrendamento") path is scraped FIRST and its
 # Playwright phone-reveal budget is consumed before the buy path. The
 # client's FRBO list comes exclusively from OLX rentals — prioritising
@@ -191,10 +201,16 @@ class OLXScraper(BaseScraper):
 
     SOURCE = "olx"
 
-    def __init__(self, max_pages: int = 15, fetch_details: bool = True, fetch_phone: bool = True):
+    def __init__(self, max_pages: int = 5, fetch_details: bool = True, fetch_phone: bool = True):
         """
         Args:
-            max_pages:    Max pages to paginate per zone.
+            max_pages:    Max pages to paginate per zone+keyword. Default
+                          lowered from 15 to 5 on 2026-05-08: with 2 buy
+                          keywords (apartamento+moradia) × 2 paths
+                          (buy+rent) = 4 sweeps per zone, 15 pages each
+                          made full runs untenable. 5 pages still covers
+                          all recently-posted listings (each OLX page ≈ 50
+                          ads, so 250/keyword/zone is plenty).
             fetch_details: Fetch each ad's detail page (description, params, seller).
             fetch_phone:  After the httpx detail fetch, attempt Playwright phone reveal
                           for ads still missing a phone number. Requires playwright to
@@ -233,19 +249,26 @@ class OLXScraper(BaseScraper):
         self._pw_phone_count = 0   # reset per zone — shared across buy + rent
         self._detail_count   = 0   # shared across buy + rent
 
-        buy_base    = f"{BASE_URL}/imoveis/q-{slug}"
-        rental_base = f"{BASE_URL}/imoveis/q-arrendamento-{slug}"
+        # Iterate keyword-filtered URLs so the search is restricted to
+        # apartamentos and moradias. /imoveis/q-{slug} alone pulls in rooms,
+        # garages and commercial — bad signal-to-noise for FSBO angariação.
+        buy_bases    = [f"{BASE_URL}/imoveis/q-{kw}-{slug}"              for kw in BUY_KEYWORDS]
+        rental_bases = [f"{BASE_URL}/imoveis/q-arrendamento-{kw}-{slug}" for kw in RENT_KEYWORDS]
 
         if FRBO_FIRST and SCRAPE_RENTALS:
             # ── Rental first (client's FRBO list source) ──────────────────
             log.debug("[olx] zone={z} FRBO-first — scraping rentals first", z=zone)
-            yield from self._scrape_listing_path(client, zone, rental_base, "rent", pw_limit)
-            yield from self._scrape_listing_path(client, zone, buy_base,    "buy",  pw_limit)
+            for url_base, kw in zip(rental_bases, RENT_KEYWORDS):
+                yield from self._scrape_listing_path(client, zone, url_base, f"rent-{kw}", pw_limit)
+            for url_base, kw in zip(buy_bases, BUY_KEYWORDS):
+                yield from self._scrape_listing_path(client, zone, url_base, f"buy-{kw}",  pw_limit)
         else:
             # Legacy ordering — buy then rent
-            yield from self._scrape_listing_path(client, zone, buy_base, "buy", pw_limit)
+            for url_base, kw in zip(buy_bases, BUY_KEYWORDS):
+                yield from self._scrape_listing_path(client, zone, url_base, f"buy-{kw}", pw_limit)
             if SCRAPE_RENTALS:
-                yield from self._scrape_listing_path(client, zone, rental_base, "rent", pw_limit)
+                for url_base, kw in zip(rental_bases, RENT_KEYWORDS):
+                    yield from self._scrape_listing_path(client, zone, url_base, f"rent-{kw}", pw_limit)
 
     def _scrape_listing_path(
         self,

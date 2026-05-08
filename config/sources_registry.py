@@ -98,7 +98,14 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
             "Seixal":   "comprar-casas/seixal/",
             "Sesimbra": "comprar-casas/sesimbra/",
         },
-        notes = "Requires Playwright. Strong bot detection. Agency-heavy.",
+        is_active = False,
+        notes = (
+            "DISABLED 2026-05-08: DataDome anti-bot blocks both httpx (403) "
+            "and Playwright stealth (2/2 attempts) — 0 listings on smoke test. "
+            "Re-enable only with residential proxies (Smartproxy/Bright Data) "
+            "or DataDome-bypass service (ZenRows/ScrapingBee). Owner_bias=agency "
+            "anyway, so low priority for FSBO-focused angariação."
+        ),
     ),
 
     "sapo": SourceMeta(
@@ -119,10 +126,14 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
             "Seixal":   "seixal",
             "Sesimbra": "sesimbra",
         },
+        is_active = False,
         notes = (
-            "Major PT portal. URL pattern: /venda/{apartamentos|moradias}/{zone_slug}/. "
-            "Validated 2026-03 — 28 listings/page, zone-filtered. "
-            "Old ?address= param returned nationwide featured listings — do NOT use."
+            "DISABLED 2026-05-08: returns 429 Too Many Requests after the 1st "
+            "request from any single IP, even with random user-agent and httpx "
+            "alone. Per-IP rate-limit too aggressive for a 36-zone × 3-category "
+            "daily sweep without rotating proxies. Re-enable when residential "
+            "proxy rotation is in place. URL+selectors validated 2026-03 — "
+            "scraper code is fine, the obstacle is purely network-level."
         ),
     ),
 
@@ -142,13 +153,15 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
             "Seixal":   "seixal/imoveis",
             "Sesimbra": "sesimbra/imoveis",
         },
-        is_active = True,
+        is_active = False,
         notes = (
-            "⚠️ EXPERIMENTAL — disabled pending URL-first strategy rewrite. "
-            "Grid page is Next.js CSR: card content (title, price) not in server HTML. "
-            "Only <a href> links visible. Fix: (1) extract listing URLs from grid, "
-            "(2) fetch each detail page, (3) parse Product JSON-LD schema. "
-            "High FSBO rate (0.70 contact_rate) makes it high-priority for Phase 2."
+            "DISABLED 2026-05-08: scraper returns 160 garbage items per zone — "
+            "all are books, electronics, etc. from /lisboa/desporto-lazer/livros "
+            "instead of the requested /{zone}/imoveis. Cause: __NEXT_DATA__ JSON "
+            "parser reads the wrong feed. Fix requires URL-first strategy "
+            "rewrite: (1) extract listing URLs from grid, (2) fetch detail "
+            "pages, (3) parse Product JSON-LD. ~4-8h work; revisit only after "
+            "Imovirtual+OLX prove insufficient volume."
         ),
     ),
 

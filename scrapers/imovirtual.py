@@ -158,10 +158,16 @@ ZONE_SLUGS = ZONE_PATHS
 class ImovirtualScraper(BaseScraper):
     SOURCE = "imovirtual"
 
-    def __init__(self, max_pages: int = 15, fetch_phone: bool = True):
+    def __init__(self, max_pages: int = 5, fetch_phone: bool = True):
         """
         Args:
-            max_pages:   Max pages to paginate per zone.
+            max_pages:   Max pages to paginate per zone+category.  Default
+                         lowered from 15 to 5 on 2026-05-08: with 22 Lisbon
+                         freguesias × 4 categories × 2 paths (buy+rent), 15
+                         pages took 13min+ per freguesia. 5 pages still
+                         covers every recently-posted listing on Imovirtual
+                         (most freguesias have <125 active listings) while
+                         keeping a full sweep under ~3-4 min per freguesia.
             fetch_phone: After httpx detail fetch, use Playwright to reveal the
                          phone number for listings still missing one.
                          Requires playwright + chromium installed.
