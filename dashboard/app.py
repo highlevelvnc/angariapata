@@ -399,6 +399,37 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "ph.cooldown":                {"pt": "Em cooldown {m} min",           "en": "Cooldown {m} min"},
     "ph.win_rate":                {"pt": "{pct}%",                        "en": "{pct}%"},
     "ph.reset":                   {"pt": "Reset stats",                   "en": "Reset stats"},
+
+    # ── Schedule editor ────────────────────────────────────────────────────
+    "sch.section.eyebrow":        {"pt": "Agenda automática",             "en": "Automated schedule"},
+    "sch.section.title":          {"pt": "Cada manhã, sem clique.",       "en": "Every morning, hands-off."},
+    "sch.section.deck":           {"pt": "Define quando o motor corre — o resto é silêncio. "
+                                          "Cada agenda é um pacote independente: hora, dias da semana, fontes e zonas.",
+                                    "en": "Set when the engine runs — the rest is silence. "
+                                          "Each schedule is an independent bundle: time, weekdays, sources and zones."},
+    "sch.empty":                  {"pt": "Nenhuma agenda criada. Adiciona uma abaixo.",
+                                    "en": "No schedules yet. Add one below."},
+    "sch.next_in":                {"pt": "Próximo em",                    "en": "Next in"},
+    "sch.last_run":               {"pt": "Último",                        "en": "Last run"},
+    "sch.never":                  {"pt": "Nunca",                          "en": "Never"},
+    "sch.run_now":                {"pt": "Correr agora",                   "en": "Run now"},
+    "sch.delete":                 {"pt": "Apagar",                         "en": "Delete"},
+    "sch.add.title":              {"pt": "Nova agenda",                    "en": "New schedule"},
+    "sch.field.name":             {"pt": "Nome",                           "en": "Name"},
+    "sch.field.hour":             {"pt": "Hora",                           "en": "Hour"},
+    "sch.field.minute":           {"pt": "Minuto",                         "en": "Minute"},
+    "sch.field.days":             {"pt": "Dias da semana",                 "en": "Days of week"},
+    "sch.field.sources":          {"pt": "Fontes (vazio = automático)",    "en": "Sources (empty = auto)"},
+    "sch.field.zones":            {"pt": "Zonas (vazio = todas)",          "en": "Zones (empty = all)"},
+    "sch.create":                 {"pt": "Criar agenda",                   "en": "Create schedule"},
+    "sch.created":                {"pt": "✓ Agenda criada",                "en": "✓ Schedule created"},
+    "sch.deleted":                {"pt": "✓ Agenda apagada",               "en": "✓ Schedule deleted"},
+    "sch.daemon.note":            {"pt": "ⓘ  Estas agendas servem de referência. "
+                                          "Para correrem sozinhas, instala o cron: "
+                                          "`crontab -e` e adiciona uma linha por agenda.",
+                                    "en": "ⓘ  These schedules are reference definitions. "
+                                          "For unattended execution, install via cron: "
+                                          "`crontab -e` and add one line per schedule."},
 }
 
 
@@ -2383,6 +2414,182 @@ html { scroll-behavior: smooth; }
     line-height: 1.45;
     color: var(--fog);
     padding-left: 4px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  SCHEDULE EDITOR — section + cards on the Motor page                     */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.sched-section {
+    margin: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-3) 0;
+    border-top: 1px solid rgba(221,194,105,.18);
+}
+.sched-section__eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 6px;
+}
+.sched-section__title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 72, "SOFT" 60;
+    font-weight: 320;
+    font-size: clamp(22px, 2.6vw, 32px);
+    line-height: 1.1;
+    color: var(--ice);
+    margin: 0 0 var(--sp-2);
+    letter-spacing: -.014em;
+}
+.sched-section__deck {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 320;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--fog);
+    max-width: 70ch;
+    margin: 0 0 var(--sp-3);
+}
+
+.sched-empty {
+    padding: 18px 14px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--smoke);
+    background: rgba(20,16,8,.4);
+    border-left: 2px solid var(--smoke);
+    border-radius: 4px 8px 8px 4px;
+}
+
+.sched-card {
+    margin: 8px 0 4px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(20,16,8,.6) 0%, rgba(10,8,6,.85) 100%);
+    border: 1px solid rgba(221,194,105,.18);
+    border-left: 3px solid var(--mint);
+}
+.sched-card--off {
+    border-left-color: var(--smoke);
+    opacity: .55;
+}
+
+.sched-card__head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+}
+.sched-card__time {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 72, "SOFT" 0;
+    font-weight: 360;
+    font-size: clamp(28px, 3vw, 38px);
+    line-height: 1;
+    letter-spacing: -.02em;
+    color: var(--mint-l);
+    font-feature-settings: "lnum","tnum";
+    min-width: 90px;
+}
+.sched-card--off .sched-card__time { color: var(--smoke); }
+
+.sched-card__name {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 24, "SOFT" 30;
+    font-weight: 460;
+    font-size: 15px;
+    color: var(--ice);
+    letter-spacing: -.005em;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sched-card__days {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--smoke);
+}
+.sched-card__badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    padding: 2px 7px;
+    border-radius: 999px;
+}
+.sched-card__badge--on {
+    background: rgba(86,175,116,.15);
+    color: #86d4a8;
+    border: 1px solid rgba(86,175,116,.4);
+}
+.sched-card__badge--off {
+    background: rgba(168,156,128,.10);
+    color: var(--smoke);
+    border: 1px solid rgba(168,156,128,.32);
+}
+
+.sched-card__next-wrap {
+    text-align: right;
+    line-height: 1.1;
+    min-width: 100px;
+}
+.sched-card__next-lbl {
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 2px;
+}
+.sched-card__next-val {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 24;
+    font-weight: 380;
+    font-size: 17px;
+    color: var(--mint-l);
+    font-feature-settings: "lnum","tnum";
+}
+.sched-card__next--off .sched-card__next-val { color: var(--smoke); }
+
+.sched-card__detail {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(221,194,105,.10);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 16px;
+    font-family: var(--font-body);
+    font-size: 11px;
+}
+@media (max-width: 700px) {
+    .sched-card__detail { grid-template-columns: 1fr; }
+}
+.sched-card__lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-right: 6px;
+}
+.sched-card__val {
+    color: var(--ice);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    word-break: break-word;
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
@@ -7694,6 +7901,157 @@ elif page == "&#9881;  Motor":
         f'</section>',
         unsafe_allow_html=True,
     )
+
+    # ── Schedule editor — recurring run definitions ────────────────────────
+    from utils import schedule_store as _sched
+    _lang = st.session_state.get("__lang", "pt")
+
+    st.markdown(
+        f'<section class="sched-section">'
+        f'  <div class="sched-section__eyebrow">{t("sch.section.eyebrow")}</div>'
+        f'  <h2 class="sched-section__title">{t("sch.section.title")}</h2>'
+        f'  <p class="sched-section__deck">{t("sch.section.deck")}</p>'
+        f'</section>',
+        unsafe_allow_html=True,
+    )
+
+    _schedules = _sched.list_schedules()
+
+    if not _schedules:
+        st.markdown(
+            f'<div class="sched-empty">{t("sch.empty")}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        for s in _schedules:
+            sid = s["id"]
+            name = s.get("name") or "—"
+            time_str = f"{s['hour']:02d}:{s['minute']:02d}"
+            days_str = _sched.days_label(s.get("days") or [], lang=_lang)
+            sources_str = _sched.sources_label(s, lang=_lang)
+            zones_str = _sched.zones_label(s, lang=_lang)
+            next_in = _sched.next_fire_in_seconds(s)
+            if next_in is None:
+                next_str = "—"
+                next_class = "sched-card__next--off"
+            else:
+                hh = int(next_in // 3600)
+                mm = int((next_in % 3600) // 60)
+                next_str = f"{hh}h {mm:02d}m" if hh else f"{mm} min"
+                next_class = "sched-card__next--on"
+
+            last = s.get("last_run_at")
+            if last:
+                from datetime import datetime as _dt
+                last_str = _dt.fromtimestamp(last).strftime("%d %b %H:%M")
+            else:
+                last_str = t("sch.never")
+
+            enabled = bool(s.get("enabled", True))
+            card_class = "sched-card" if enabled else "sched-card sched-card--off"
+            badge = (
+                '<span class="sched-card__badge sched-card__badge--on">ON</span>' if enabled
+                else '<span class="sched-card__badge sched-card__badge--off">OFF</span>'
+            )
+
+            st.markdown(
+                f'<div class="{card_class}">'
+                f'  <div class="sched-card__head">'
+                f'    <div class="sched-card__time">{time_str}</div>'
+                f'    <div class="sched-card__meta">'
+                f'      <div class="sched-card__name">{name} {badge}</div>'
+                f'      <div class="sched-card__days">{days_str}</div>'
+                f'    </div>'
+                f'    <div class="sched-card__next-wrap {next_class}">'
+                f'      <div class="sched-card__next-lbl">{t("sch.next_in")}</div>'
+                f'      <div class="sched-card__next-val">{next_str}</div>'
+                f'    </div>'
+                f'  </div>'
+                f'  <div class="sched-card__detail">'
+                f'    <div><span class="sched-card__lbl">FONTES</span> <span class="sched-card__val">{sources_str}</span></div>'
+                f'    <div><span class="sched-card__lbl">ZONAS</span> <span class="sched-card__val">{zones_str}</span></div>'
+                f'    <div><span class="sched-card__lbl">{t("sch.last_run").upper()}</span> <span class="sched-card__val">{last_str}</span></div>'
+                f'  </div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            sc1, sc2, sc3 = st.columns([1, 1, 1])
+            with sc1:
+                if st.button(("⏸  " if enabled else "▶  ") + ("OFF" if enabled else "ON"),
+                             key=f"sch_toggle_{sid}", use_container_width=True):
+                    _sched.toggle(sid)
+                    st.rerun()
+            with sc2:
+                if st.button(f"🚀  {t('sch.run_now')}", key=f"sch_runnow_{sid}",
+                             use_container_width=True):
+                    from utils import run_state as _rs
+                    if _rs.is_running():
+                        st.toast(t("run.already_running"), icon="⏳")
+                    else:
+                        _rs.start(sources=s.get("sources"), zones=s.get("zones"))
+                        _sched.mark_ran(sid)
+                        st.toast(t("run.starting"), icon="🚀")
+                        st.rerun()
+            with sc3:
+                if st.button(f"🗑  {t('sch.delete')}", key=f"sch_del_{sid}",
+                             use_container_width=True):
+                    _sched.delete(sid)
+                    st.toast(t("sch.deleted"), icon="🗑")
+                    st.rerun()
+
+    # ── New schedule form ──────────────────────────────────────────────
+    with st.expander(t("sch.add.title"), expanded=False):
+        f1, f2, f3 = st.columns([2, 1, 1])
+        with f1:
+            new_name = st.text_input(t("sch.field.name"), placeholder="Manhã Lisboa",
+                                     key="sch_new_name")
+        with f2:
+            new_hour = st.number_input(t("sch.field.hour"), min_value=0, max_value=23,
+                                       value=8, step=1, key="sch_new_hour")
+        with f3:
+            new_min = st.number_input(t("sch.field.minute"), min_value=0, max_value=59,
+                                      value=0, step=5, key="sch_new_min")
+
+        st.caption(t("sch.field.days"))
+        day_labels_pt = ("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+        day_labels_en = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        day_labels = day_labels_pt if _lang == "pt" else day_labels_en
+        cols = st.columns(7)
+        chosen_days = []
+        for i, lbl in enumerate(day_labels):
+            with cols[i]:
+                default = (i < 5)  # mon-fri default
+                if st.checkbox(lbl, value=default, key=f"sch_new_day_{i}"):
+                    chosen_days.append(i)
+
+        SOURCE_OPTIONS = ["olx", "imovirtual", "olx_marketplace", "standvirtual"]
+        new_sources = st.multiselect(t("sch.field.sources"), SOURCE_OPTIONS,
+                                     default=["olx", "imovirtual"], key="sch_new_sources")
+
+        ZONE_PRESETS = list(settings.zones)
+        new_zones = st.multiselect(t("sch.field.zones"), ZONE_PRESETS,
+                                   default=[], key="sch_new_zones")
+
+        if st.button(t("sch.create"), key="sch_create_btn", use_container_width=True,
+                     type="primary"):
+            if not new_name.strip():
+                st.error("Nome obrigatório.")
+            elif not chosen_days:
+                st.error("Escolhe pelo menos um dia.")
+            else:
+                _sched.add(
+                    name=new_name,
+                    hour=new_hour,
+                    minute=new_min,
+                    days=chosen_days,
+                    sources=new_sources or None,
+                    zones=new_zones or None,
+                )
+                st.toast(t("sch.created"), icon="✓")
+                st.rerun()
+
+    st.caption(t("sch.daemon.note"))
+    st.divider()
 
     stats = load_stats()
     leads = load_leads(zone=zone_filter, typology=typo_filter, score_min=score_floor, is_demo=_demo_filter, contact=_contact_filter, owner_type=_owner_filter, csource_type=_csource_filter, fts_query=fts_query)
