@@ -1184,10 +1184,22 @@ _CSS_CARDS = """<style>
     font-style: italic;
     font-variation-settings: "opsz" 32;
     font-weight: 300;
-    font-size: 22px;
-    color: var(--mint);
+    font-size: 18px;
+    color: var(--ink-00);
     letter-spacing: .04em;
-    min-width: 2.4em;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    border-radius: 999px;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 4px 16px -4px rgba(221,194,105,.5);
+    text-shadow: 0 1px 0 rgba(255,255,255,.25);
+    font-weight: 600;
 }
 .section-marker__title {
     font-family: var(--font-display);
@@ -1201,7 +1213,26 @@ _CSS_CARDS = """<style>
 .section-marker__rule {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(221,194,105,.45) 0%, rgba(221,194,105,0) 100%);
+    position: relative;
+    background: linear-gradient(90deg, rgba(221,194,105,.55) 0%, rgba(221,194,105,0) 100%);
+}
+.section-marker__rule::before {
+    /* parallel hairline above for double-rule effect */
+    content: "";
+    position: absolute;
+    left: 0; right: 30%;
+    bottom: 5px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(221,194,105,.22) 0%, rgba(221,194,105,0) 100%);
+}
+.section-marker__fleuron {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--mint);
+    line-height: 1;
+    margin: 0 -2px;
+    opacity: .85;
 }
 .section-marker__caption {
     font-family: var(--font-body);
@@ -1210,6 +1241,193 @@ _CSS_CARDS = """<style>
     letter-spacing: .22em;
     text-transform: uppercase;
     color: var(--slate);
+}
+
+/* ──── Maison watermark + double-rule + drop cap upgrades ────────────────── */
+.maison-watermark {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    z-index: 0;
+    padding-right: 4%;
+}
+.maison-watermark__text {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80;
+    font-weight: 200;
+    font-size: clamp(140px, 20vw, 280px);
+    line-height: .8;
+    letter-spacing: -0.05em;
+    color: var(--mint);
+    opacity: .035;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.maison-rule-top,
+.maison-rule-bot {
+    position: absolute; left: 0; right: 0;
+    height: 8px;
+    pointer-events: none;
+    z-index: 2;
+}
+.maison-rule-top { top: 0; }
+.maison-rule-bot { bottom: 0; }
+.maison-rule-top::before,
+.maison-rule-top::after,
+.maison-rule-bot::before,
+.maison-rule-bot::after {
+    content: "";
+    position: absolute; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(221,194,105,.55) 12%,
+        var(--mint) 50%,
+        rgba(221,194,105,.55) 88%,
+        transparent 100%);
+}
+.maison-rule-top::before { top: 0; opacity: .9; }
+.maison-rule-top::after  { top: 4px; opacity: .35; }
+.maison-rule-bot::before { bottom: 4px; opacity: .35; }
+.maison-rule-bot::after  { bottom: 0; opacity: .9; }
+
+/* Asterism ornament between figure and supporting stats */
+.maison-asterism {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--sp-2) 0;
+    padding: 4px 0;
+    color: var(--mint);
+    opacity: .55;
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: .8em;
+    user-select: none;
+}
+
+/* Editorial drop cap — used on .maison-deck when wrapped with .has-dropcap */
+.maison-deck.has-dropcap::first-letter {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80;
+    font-weight: 320;
+    float: left;
+    font-size: 4.4em;
+    line-height: .85;
+    padding: .12em .14em 0 0;
+    margin-right: .04em;
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ──── Editorial polish: selection, scrollbar, focus rings ──────────────── */
+::selection {
+    background: rgba(221,194,105,.32);
+    color: var(--ice);
+    text-shadow: none;
+}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(221,194,105,.3) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(221,194,105,.45) 0%, rgba(168,134,26,.45) 100%);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 100%);
+    background-clip: padding-box;
+}
+
+/* ──── Sidebar: gold-frame plate around the logo ────────────────────────── */
+.patabrava-mark {
+    position: relative;
+}
+.patabrava-mark::before {
+    content: "";
+    position: absolute;
+    top: 12px; left: -2px; right: -2px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%, rgba(221,194,105,.4) 30%,
+        rgba(221,194,105,.4) 70%, transparent 100%);
+}
+.patabrava-mark::after {
+    content: "";
+    position: absolute;
+    bottom: 12px; left: -2px; right: -2px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%, rgba(221,194,105,.18) 30%,
+        rgba(221,194,105,.18) 70%, transparent 100%);
+}
+
+/* ──── Auction-lot card variant ─────────────────────────────────────────── */
+/* Apply alongside .card to upgrade a lead row to lot-style presentation. */
+.lot {
+    position: relative;
+    padding: var(--sp-4) var(--sp-5) var(--sp-4) var(--sp-6);
+    border-left: 2px solid var(--mint);
+    border-radius: 4px 14px 14px 4px;
+    background:
+        linear-gradient(90deg, rgba(221,194,105,.06) 0%, transparent 18%),
+        linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+}
+.lot::before {
+    /* "Lot Nº" label — small caps */
+    content: "LOT " counter(lot, decimal-leading-zero);
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .25em;
+    color: var(--smoke);
+}
+.lot-list { counter-reset: lot; }
+.lot { counter-increment: lot; }
+
+/* Hover ornaments — small gold corner ticks on cards */
+.card {
+    --corner-size: 14px;
+    --corner-color: rgba(221,194,105,0);
+    transition:
+        transform .25s cubic-bezier(.4,0,.2,1),
+        border-color .25s,
+        box-shadow .25s,
+        --corner-color .3s;
+}
+.card:hover {
+    --corner-color: rgba(221,194,105,.55);
+}
+.card::before {
+    content: "";
+    position: absolute;
+    top: 6px; left: 6px;
+    width: var(--corner-size); height: var(--corner-size);
+    border-top: 1px solid var(--corner-color);
+    border-left: 1px solid var(--corner-color);
+    transition: opacity .3s, border-color .3s;
+    pointer-events: none;
+    border-radius: 1px;
+}
+.card > *:last-child::after,
+.card-corner-br {
+    /* fallback corner via a sibling div if the structure allows */
 }
 </style>"""
 
@@ -2976,15 +3194,19 @@ if page == "&#128202;  Dashboard":
     st.markdown(
         f"""
         <section class="maison">
+          <div class="maison-watermark"><span class="maison-watermark__text">Patabrava</span></div>
+          <div class="maison-rule-top"></div>
+          <div class="maison-rule-bot"></div>
           <div class="maison-grid">
             <div class="maison-col-left">
-              <div class="maison-eyebrow">Maison · Angariação Lisboa</div>
+              <div class="maison-eyebrow">Maison &middot; Angariação Lisboa</div>
               <h1 class="maison-title">Patabrava<br/><em>Maison de l'immobilier</em></h1>
-              <p class="maison-deck">Lead intelligence em tempo real. Cada manhã, uma nova selecção
-                de imóveis directamente do proprietário — para a equipa angariar antes de qualquer outra agência.</p>
+              <p class="maison-deck has-dropcap">Lead intelligence em tempo real. Cada manhã, uma nova
+                selecção de imóveis directamente do proprietário — para a equipa angariar antes
+                de qualquer outra agência da capital.</p>
               <div class="maison-byline">
                 <span>{_edition_label}</span>
-                <span>OLX · Imovirtual</span>
+                <span>OLX &middot; Imovirtual</span>
                 <span>{total} oportunidades activas</span>
               </div>
             </div>
@@ -2996,6 +3218,7 @@ if page == "&#128202;  Dashboard":
                   <div class="maison-figure-sub">{_hot_sub}</div>
                 </div>
               </div>
+              <div class="maison-asterism">⁂</div>
               <div class="maison-stats">
                 <div>
                   <div class="maison-stat-num is-warm">{warm_n}</div>
@@ -3014,9 +3237,10 @@ if page == "&#128202;  Dashboard":
           </div>
         </section>
         <div class="section-marker">
-          <div class="section-marker__num">I.</div>
+          <div class="section-marker__num">I</div>
           <div class="section-marker__title">Vista do dia</div>
           <div class="section-marker__rule"></div>
+          <div class="section-marker__fleuron">❦</div>
           <div class="section-marker__caption">Indicadores principais</div>
         </div>
         """,
