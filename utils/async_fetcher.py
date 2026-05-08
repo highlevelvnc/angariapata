@@ -107,20 +107,22 @@ async def _run(
     on_response:      Optional[Callable[[str, str], None]],
     follow_redirects: bool,
 ) -> dict:
+    """Async parallel fetch — uses curl_cffi browser TLS when available,
+    falls back to httpx. Same status-code accounting either way."""
+    from utils.http_client import build_async_session
+
     sema  = asyncio.Semaphore(max(1, concurrency))
     stats = {"ok": 0, "errors": 0, "blocked": 0, "elapsed": 0.0}
     t0 = time.time()
 
-    async with httpx.AsyncClient(
-        headers=headers or {},
+    client = build_async_session(
+        headers=headers,
         timeout=timeout,
         follow_redirects=follow_redirects,
-        http2=False,                     # OLX/Imovirtual misbehave on h2 occasionally
-        limits=httpx.Limits(
-            max_keepalive_connections=concurrency,
-            max_connections=concurrency * 2,
-        ),
-    ) as client:
+        limits_max=concurrency,
+    )
+
+    async with client:
 
         async def _one(url: str) -> None:
             async with sema:
@@ -138,12 +140,9 @@ async def _run(
                         log.debug("[async_fetcher] {c} on {u}", c=r.status_code, u=url[-60:])
                     else:
                         stats["errors"] += 1
-                except (httpx.TimeoutException, httpx.NetworkError) as e:
-                    stats["errors"] += 1
-                    log.debug("[async_fetcher] {u}: {e}", u=url[-60:], e=type(e).__name__)
                 except Exception as e:
                     stats["errors"] += 1
-                    log.debug("[async_fetcher] unexpected {u}: {e}", u=url[-60:], e=e)
+                    log.debug("[async_fetcher] {u}: {e}", u=url[-60:], e=type(e).__name__)
 
         await asyncio.gather(*(_one(u) for u in urls))
 

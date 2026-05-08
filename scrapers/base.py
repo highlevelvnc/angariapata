@@ -479,20 +479,29 @@ class BaseScraper(ABC):
 
     # ── HTTP client ───────────────────────────────────────────────────────────
 
-    def _build_client(self, follow_redirects: bool = True) -> httpx.Client:
-        """Build a fresh httpx client with anti-block headers and optional proxy.
+    def _build_client(self, follow_redirects: bool = True):
+        """Build a fresh HTTP session with browser TLS fingerprint + anti-block
+        headers + optional proxy.
 
-        Cookies persist for the lifetime of the client (httpx default), so
-        every request inside the same session shares the cookie jar — that
-        matters for portals that drop a "first-visit" cookie on the
-        homepage and validate it on subsequent searches.
+        When curl_cffi is installed, this returns a session whose TLS
+        handshake matches a real Chrome / Edge / Safari / Firefox build
+        (rotated randomly), so DataDome / Akamai / Cloudflare-style
+        services no longer flag us on JA3 alone. When unavailable, falls
+        back to httpx (still an improvement over the bare default thanks
+        to the synthesised Sec-CH-UA headers in proxy_manager).
+
+        Cookies persist for the lifetime of the session — that matters
+        for portals that drop a "first-visit" cookie on the homepage and
+        validate it on subsequent searches.
         """
-        kwargs = self.proxy_manager.get_httpx_kwargs()
-        return httpx.Client(
+        from utils.http_client import build_sync_session
+        proxy = self.proxy_manager.get_proxy()
+        headers = self.proxy_manager.get_headers()
+        return build_sync_session(
+            headers=headers,
             timeout=settings.request_timeout,
             follow_redirects=follow_redirects,
-            http2=False,                # OLX/Imovirtual misbehave on h2 occasionally
-            **kwargs,
+            proxy=proxy,
         )
 
     def _warmup(self, client: httpx.Client, homepage_url: str) -> bool:

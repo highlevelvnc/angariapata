@@ -9,6 +9,8 @@ click==8.1.7
 # ─── HTTP & Scraping ─────────────────────────────────────────────────────────
 httpx[http2]==0.27.0
 brotli>=1.1.0              # brotli decompression for httpx (required for OLX PT)
+zstandard>=0.22.0          # zstd decompression (Cloudflare / Akamai)
+curl_cffi>=0.7.0           # browser-fingerprint TLS — defeats DataDome / Akamai JA3
 beautifulsoup4==4.12.3
 lxml==5.2.2
 playwright==1.44.0

@@ -77,8 +77,16 @@ class PipelineRunner:
         Fixed 2026-05-08: previously hardcoded the full list and silently
         ignored is_active toggles in the registry, so disabled sources
         kept being scraped (Idealista DataDome, SAPO 429, Custojusto bug).
+
+        Anti-block hour gating: portals' fraud teams flag any IP that
+        hammers the listings between 02:00 and 06:00 local time — that's
+        when the patterns are easiest to spot because real users are
+        rare. We log a warning when a run starts in that window so the
+        operator knows the risk; we don't hard-block (some setups want
+        the unattended overnight cron).
         """
         import time
+        from datetime import datetime
         from config.settings import settings
         from config.sources_registry import SOURCE_REGISTRY
         from reports.run_report import RunReportCollector
@@ -93,6 +101,15 @@ class PipelineRunner:
                 s=sources,
             )
         zones = zones or settings.zones
+
+        _hour = datetime.now().hour
+        if 2 <= _hour < 6:
+            log.warning(
+                "[runner] starting run at {h}:00 — portals flag bot-shaped "
+                "traffic disproportionately during 02:00-06:00 local. "
+                "Real users are rare here. Consider rescheduling.",
+                h=_hour,
+            )
 
         log.info("=== Full pipeline run — sources: {s}, zones: {z} ===", s=sources, z=zones)
 
