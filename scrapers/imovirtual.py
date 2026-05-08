@@ -157,6 +157,7 @@ ZONE_SLUGS = ZONE_PATHS
 
 class ImovirtualScraper(BaseScraper):
     SOURCE = "imovirtual"
+    PERSONA_HOST = "imovirtual.com"
 
     def __init__(self, max_pages: int = 5, fetch_phone: bool = True):
         """

@@ -80,17 +80,21 @@ def build_sync_session(
     timeout:          float          = 30.0,
     follow_redirects: bool           = True,
     proxy:            Optional[str]  = None,
+    profile:          Optional[str]  = None,    # explicit persona profile
 ) -> Any:
     """Return a session-like object with the scraper-required subset of the
     Session API. Always backed by browser TLS when curl_cffi is available.
+
+    ``profile`` (e.g. "chrome131", "safari17_0") forces a specific
+    impersonation. When omitted, picks one from the rotation pool.
     """
     if _HAVE_CURL_CFFI:
-        profile = _pick_profile()
-        log.debug("[http_client] sync session — curl_cffi/{p}", p=profile)
+        chosen = profile or _pick_profile()
+        log.debug("[http_client] sync session — curl_cffi/{p}", p=chosen)
         sess = _curl_requests.Session(
             headers=headers or {},
             timeout=timeout,
-            impersonate=profile,
+            impersonate=chosen,
         )
         # Apply proxy if requested. curl_cffi uses requests-style 'proxies' dict.
         if proxy:

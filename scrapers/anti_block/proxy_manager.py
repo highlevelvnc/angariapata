@@ -158,18 +158,41 @@ class ProxyManager:
         """Return the next user-agent from the pool."""
         return next(self._ua_cycle)
 
-    def get_headers(self, extra: dict = None) -> dict:
-        """Return a complete headers dict with a fresh user-agent and
-        synthesised Client Hints (Sec-CH-UA family) that match the UA.
+    def get_headers(self, extra: dict = None, *, host: str = None,
+                    persona_index: int = 0) -> dict:
+        """Return a complete headers dict.
+
+        When ``host`` is given, headers are derived from a *deterministic
+        per-host persona* (same Mac+Chrome returning to OLX every run).
+        When ``host`` is None, falls back to the legacy random-UA path.
         """
+        if host:
+            try:
+                from scrapers.anti_block.personas import pick_persona, headers_for
+                persona = pick_persona(host, sticky_index=persona_index)
+                headers = headers_for(persona)
+                if extra:
+                    headers.update(extra)
+                return headers
+            except Exception as e:
+                log.debug("[proxy_manager] persona lookup failed: {e}", e=e)
+
+        # Legacy path — random UA + synthesised Client Hints
         ua = self.get_user_agent()
         headers = {**CHROME_HEADERS, "User-Agent": ua}
-        # Append Sec-CH-UA only if the browser actually ships them (Chromium
-        # family). Firefox/Safari requests look more legit *without* these.
         headers.update(_parse_ua_for_hints(ua))
         if extra:
             headers.update(extra)
         return headers
+
+    def get_persona_for(self, host: str, persona_index: int = 0):
+        """Expose persona to callers that need profile / viewport / locale
+        (the http_client factory and the Playwright launcher)."""
+        try:
+            from scrapers.anti_block.personas import pick_persona
+            return pick_persona(host, sticky_index=persona_index)
+        except Exception:
+            return None
 
     def mark_blocked(self, proxy: str) -> None:
         """Mark a proxy as blocked so it's skipped temporarily."""

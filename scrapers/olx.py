@@ -189,6 +189,9 @@ _CONSENT_SELECTORS = [
 
 
 class OLXScraper(BaseScraper):
+    # Each portal binds to a stable hostname so the persona pool returns
+    # consistent identities across runs. See scrapers/anti_block/personas.py.
+    PERSONA_HOST = "olx.pt"
     """
     Scrapes OLX Portugal /imoveis/ listings.
 

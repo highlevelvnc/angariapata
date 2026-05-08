@@ -479,44 +479,80 @@ class BaseScraper(ABC):
 
     # ── HTTP client ───────────────────────────────────────────────────────────
 
-    def _build_client(self, follow_redirects: bool = True):
-        """Build a fresh HTTP session with browser TLS fingerprint + anti-block
-        headers + optional proxy + persisted cookie jar.
+    # Subclasses override this to point the persona pool at their portal.
+    # Default falls back to source key when not set.
+    PERSONA_HOST: str = ""
 
-        When curl_cffi is installed, this returns a session whose TLS
-        handshake matches a real Chrome / Edge / Safari / Firefox build
-        (rotated randomly), so DataDome / Akamai / Cloudflare-style
-        services no longer flag us on JA3 alone. Cookies from prior
-        runs are replayed so the portal sees us as a returning visitor
-        rather than a first-time scraper.
+    def _build_client(self, follow_redirects: bool = True):
+        """Build a fresh HTTP session bound to a *deterministic per-host
+        persona* (UA + curl_cffi profile + Sec-CH-UA + viewport + locale).
+
+        Each host (olx.pt, imovirtual.com, …) sees the same 3-persona
+        pool every week — the portal classifies us as 3 returning
+        devices instead of 30 random fingerprints/run. Within those 3
+        we rotate per-session via ``_persona_index``.
+
+        Cookies are replayed under the persona's slug so a Chrome cookie
+        never lands on a Firefox UA.
         """
         from utils.http_client import build_sync_session
         from scrapers.anti_block.cookie_jar import load_into_client
+        from scrapers.anti_block.personas import cookie_slug, host_persona_names
+
+        host = self.PERSONA_HOST or self.SOURCE
+        idx = getattr(self, "_persona_index", 0)
+        persona = self.proxy_manager.get_persona_for(host, persona_index=idx)
         proxy = self.proxy_manager.get_proxy()
-        headers = self.proxy_manager.get_headers()
-        client = build_sync_session(
-            headers=headers,
-            timeout=settings.request_timeout,
-            follow_redirects=follow_redirects,
-            proxy=proxy,
-        )
-        # Replay yesterday's cookies if still fresh (TTL 5 days).
+
+        if persona is not None:
+            log.info(
+                "[{src}] persona pool for {h}: {pool} — using «{n}»",
+                src=self.SOURCE, h=host,
+                pool=", ".join(host_persona_names(host)),
+                n=persona.name,
+            )
+            headers = self.proxy_manager.get_headers(host=host, persona_index=idx)
+            client = build_sync_session(
+                headers=headers,
+                timeout=settings.request_timeout,
+                follow_redirects=follow_redirects,
+                proxy=proxy,
+                profile=persona.profile,
+            )
+            self._current_persona = persona
+            cookie_key = cookie_slug(persona, host)
+        else:
+            # Legacy path — no personas module / lookup failed
+            headers = self.proxy_manager.get_headers()
+            client = build_sync_session(
+                headers=headers,
+                timeout=settings.request_timeout,
+                follow_redirects=follow_redirects,
+                proxy=proxy,
+            )
+            cookie_key = self.SOURCE
+
+        # Replay this persona+host's cookies if still fresh (TTL 5 days).
         try:
-            replayed = load_into_client(client, self.SOURCE)
+            replayed = load_into_client(client, cookie_key)
             if replayed:
-                log.info("[{src}] replayed persisted cookies", src=self.SOURCE)
+                log.info("[{src}] replayed cookies under {k}", src=self.SOURCE, k=cookie_key)
         except Exception as e:
             log.debug("[{src}] cookie replay failed: {e}", src=self.SOURCE, e=e)
+        self._cookie_key = cookie_key
+
         # Track last URL hit per host for natural Referer chains.
         self._last_url_by_host: dict[str, str] = {}
         return client
 
     def _persist_cookies(self, client) -> None:
-        """Save the session's cookies to disk so the next run starts as a
-        'returning visitor'. Called from `run()` after a zone sweep."""
+        """Save the session's cookies under the persona-aware slug so the
+        next run starts as a returning visitor — same Chrome cookies under
+        the Chrome persona, same Safari cookies under the Safari persona,
+        never crossed over."""
         try:
             from scrapers.anti_block.cookie_jar import save_from_client
-            save_from_client(client, self.SOURCE)
+            save_from_client(client, getattr(self, "_cookie_key", self.SOURCE))
         except Exception as e:
             log.debug("[{src}] cookie persist failed: {e}", src=self.SOURCE, e=e)
 
@@ -639,6 +675,9 @@ class BaseScraper(ABC):
         result = ScraperResult(source=self.SOURCE, batch_id=self.batch_id)
         log.info("[{src}] Starting scrape — zones: {zones}", src=self.SOURCE, zones=zones)
 
+        # Persona index drives within-pool rotation (every N zones we
+        # advance through the 3-persona pool deterministic for this host).
+        self._persona_index = 0
         client = self._build_client().__enter__()
         zones_in_session = 0
         try:
@@ -650,7 +689,11 @@ class BaseScraper(ABC):
                         client.__exit__(None, None, None)
                     except Exception:
                         pass
-                    log.info("[{src}] rotating session after {n} zones", src=self.SOURCE, n=zones_in_session)
+                    self._persona_index += 1
+                    log.info(
+                        "[{src}] rotating session after {n} zones — next persona index={i}",
+                        src=self.SOURCE, n=zones_in_session, i=self._persona_index,
+                    )
                     client = self._build_client().__enter__()
                     zones_in_session = 0
                 try:
