@@ -617,7 +617,13 @@ class BaseScraper(ABC):
     # JA3 (curl_cffi profile rotation), a new User-Agent, and a fresh
     # cookie jar (warmup re-runs naturally). Stops one IP+session looking
     # like the same user that ran 22 freguesias in 30 minutes.
-    SESSION_ROTATE_EVERY: int = 5
+    #
+    # Tuned to 3 (down from 5) on 2026-05-08 because the operator runs
+    # from WOO PT mobile tethering (CGNAT) — many other users share that
+    # public IP, so each session is much "hotter" than on a residential
+    # line. Rotating every 3 zones limits the visible per-session
+    # footprint to one Chrome-shaped tab session.
+    SESSION_ROTATE_EVERY: int = 3
 
     def run(self, zones: list[str] = None) -> ScraperResult:
         """

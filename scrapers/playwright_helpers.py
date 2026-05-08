@@ -294,3 +294,132 @@ async def dismiss_consent_modals(page, timeout_ms: int = 1500) -> bool:
 async def human_pause(min_s: float = 0.6, max_s: float = 1.6) -> None:
     """Random delay that mimics a human reading the page."""
     await asyncio.sleep(random.uniform(min_s, max_s))
+
+
+# ── Humanisation helpers — make Playwright look like a tired tab-by-tab
+# user, not a deterministic robot. Anti-bot platforms increasingly profile
+# pointer telemetry (mousemove samples) and event timing distributions; a
+# request that arrives with zero pre-click jitter and pixel-perfect drag
+# coordinates is a tell.
+
+def _bezier_path(start: tuple[float, float], end: tuple[float, float],
+                 steps: int = 24) -> list[tuple[float, float]]:
+    """Cubic-Bézier path between two screen coordinates with two random
+    control points that bias the curve away from a straight line."""
+    sx, sy = start
+    ex, ey = end
+    dx, dy = ex - sx, ey - sy
+    # Control points displaced perpendicular to the path by ±20% of distance
+    perp = (-dy, dx)
+    norm = max(1.0, (perp[0] ** 2 + perp[1] ** 2) ** 0.5)
+    perp = (perp[0] / norm, perp[1] / norm)
+    mag = ((dx * dx + dy * dy) ** 0.5) * random.uniform(0.10, 0.28) * random.choice((-1, 1))
+    cx1 = sx + dx * 0.33 + perp[0] * mag
+    cy1 = sy + dy * 0.33 + perp[1] * mag
+    cx2 = sx + dx * 0.66 + perp[0] * mag * random.uniform(0.4, 1.0)
+    cy2 = sy + dy * 0.66 + perp[1] * mag * random.uniform(0.4, 1.0)
+
+    points = []
+    for i in range(steps + 1):
+        t = i / steps
+        # Ease-in-out — humans accelerate then decelerate
+        t = t * t * (3 - 2 * t)
+        x = (1 - t) ** 3 * sx + 3 * (1 - t) ** 2 * t * cx1 + 3 * (1 - t) * t * t * cx2 + t ** 3 * ex
+        y = (1 - t) ** 3 * sy + 3 * (1 - t) ** 2 * t * cy1 + 3 * (1 - t) * t * t * cy2 + t ** 3 * ey
+        points.append((x + random.uniform(-0.6, 0.6), y + random.uniform(-0.6, 0.6)))
+    return points
+
+
+async def human_click(page, selector: str, *, timeout_ms: int = 5000) -> bool:
+    """Move the cursor along a Bézier path to the element, hover briefly,
+    then click. Falls back to a plain click on any failure (e.g. element
+    detached) so the caller never blows up on humanisation alone.
+
+    Returns True if the click landed, False otherwise.
+    """
+    try:
+        await page.wait_for_selector(selector, timeout=timeout_ms, state="visible")
+        el = await page.query_selector(selector)
+        if not el:
+            return False
+        box = await el.bounding_box()
+        if not box:
+            await el.click()
+            return True
+
+        # Target a random spot inside the element (not dead-centre)
+        target_x = box["x"] + box["width"]  * random.uniform(0.30, 0.70)
+        target_y = box["y"] + box["height"] * random.uniform(0.30, 0.70)
+
+        # Pretend we were somewhere "above and to the left" before clicking
+        start_x  = max(0.0, target_x - random.uniform(120, 320))
+        start_y  = max(0.0, target_y - random.uniform(60, 220))
+
+        for x, y in _bezier_path((start_x, start_y), (target_x, target_y),
+                                 steps=random.randint(18, 30)):
+            await page.mouse.move(x, y)
+            await asyncio.sleep(random.uniform(0.004, 0.018))
+
+        # Brief "hover then commit" — humans hesitate before clicking
+        await asyncio.sleep(random.uniform(0.04, 0.18))
+        await page.mouse.down()
+        await asyncio.sleep(random.uniform(0.04, 0.10))
+        await page.mouse.up()
+        return True
+    except Exception as e:
+        # Last resort: fall back to direct click — better a click than no click.
+        try:
+            await page.click(selector, timeout=timeout_ms)
+            return True
+        except Exception:
+            log.debug("[playwright] human_click {sel} failed: {e}", sel=selector, e=e)
+            return False
+
+
+async def human_scroll(page, *,
+                       distance_min: int = 400,
+                       distance_max: int = 1400,
+                       segments_min: int = 3,
+                       segments_max: int = 7) -> None:
+    """Scroll down the page in 3-7 small bursts with random pauses between.
+    Mimics reading-pause-scroll behaviour. Scrolls upward occasionally
+    (like a user re-checking something) about 1 in 5 segments.
+    """
+    total = random.randint(distance_min, distance_max)
+    n_seg = random.randint(segments_min, segments_max)
+    seg_size = total // n_seg
+    for i in range(n_seg):
+        delta = seg_size + random.randint(-40, 40)
+        if random.random() < 0.18 and i > 0:
+            delta = -int(delta * random.uniform(0.3, 0.6))   # brief scroll-up
+        try:
+            await page.mouse.wheel(0, delta)
+        except Exception:
+            try:
+                await page.evaluate(f"window.scrollBy(0, {delta})")
+            except Exception:
+                return
+        await asyncio.sleep(random.uniform(0.18, 0.55))
+    await asyncio.sleep(random.uniform(0.3, 0.9))
+
+
+async def human_type(page, selector: str, text: str, *,
+                     min_ms: int = 55, max_ms: int = 165,
+                     timeout_ms: int = 5000) -> bool:
+    """Type into an input one char at a time with realistic per-key delay.
+    Adds small clusters of "thinking pauses" every few keys, similar to a
+    human composing a search term.
+    """
+    try:
+        await page.wait_for_selector(selector, timeout=timeout_ms)
+        await page.click(selector)
+        await asyncio.sleep(random.uniform(0.10, 0.25))
+        for i, ch in enumerate(text):
+            await page.keyboard.type(ch, delay=random.uniform(min_ms, max_ms))
+            # Brief thinking pause every 4-7 chars
+            if i and i % random.randint(4, 7) == 0:
+                await asyncio.sleep(random.uniform(0.10, 0.45))
+        return True
+    except Exception as e:
+        log.debug("[playwright] human_type {sel} failed: {e}", sel=selector, e=e)
+        return False

@@ -340,6 +340,31 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "lbl.compa rables":            {"pt": "Comparáveis",                  "en": "Comparables"},
     "lbl.pipeline_flow":           {"pt": "Fluxo de análise automática",  "en": "Automated analysis flow"},
     "lbl.opps_map":                {"pt": "Mapa de oportunidades",        "en": "Opportunities map"},
+
+    # ── Network / IP status widget ─────────────────────────────────────────
+    "net.header":                  {"pt": "Estado da rede",               "en": "Network status"},
+    "net.ip":                      {"pt": "IP público",                   "en": "Public IP"},
+    "net.country":                 {"pt": "País",                         "en": "Country"},
+    "net.org":                     {"pt": "Operadora",                    "en": "Carrier"},
+    "net.kind.mobile":             {"pt": "📱 Dados móveis",              "en": "📱 Mobile data"},
+    "net.kind.vpn":                {"pt": "🛡 NordVPN/VPN",                "en": "🛡 NordVPN/VPN"},
+    "net.kind.unknown":            {"pt": "🌐 Rede directa",              "en": "🌐 Direct network"},
+    "net.portals.title":           {"pt": "Portais",                      "en": "Portals"},
+    "net.portal.clean":            {"pt": "limpo",                        "en": "clean"},
+    "net.portal.blocked":          {"pt": "bloqueado",                    "en": "blocked"},
+    "net.portal.unknown":          {"pt": "desconhecido",                 "en": "unknown"},
+    "net.refresh":                 {"pt": "Verificar agora",              "en": "Check now"},
+    "net.status.allclean":         {"pt": "Tudo limpo — pronto para correr.",
+                                    "en": "All clean — ready to run."},
+    "net.status.someblocked":      {"pt": "{n} portal(is) bloqueado(s) deste IP.",
+                                    "en": "{n} portal(s) blocked from this IP."},
+    "net.tip.heading":             {"pt": "Como destrancar",              "en": "How to unblock"},
+    "net.tip.line1":               {"pt": "1. Liga o NordVPN num servidor de Portugal",
+                                    "en": "1. Connect NordVPN to a Portugal server"},
+    "net.tip.line2":               {"pt": "2. Ou desliga e religa os dados móveis (novo IP CGNAT)",
+                                    "en": "2. Or toggle mobile data off/on (new CGNAT IP)"},
+    "net.tip.line3":               {"pt": "3. Ou aguarda 6-24h para o IP descongelar",
+                                    "en": "3. Or wait 6-24h for the IP to cool down"},
 }
 
 
@@ -2182,6 +2207,148 @@ html { scroll-behavior: smooth; }
 *::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 100%);
     background-clip: padding-box;
+}
+
+/* ──── Sidebar network-status widget ──────────────────────────────────── */
+.net-card {
+    margin: 6px 0 10px;
+    padding: var(--sp-3) var(--sp-3);
+    background: linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    border: 1px solid rgba(221,194,105,.14);
+    border-radius: 10px;
+    font-family: var(--font-body);
+}
+.net-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.net-card__title {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--smoke);
+}
+.net-pill {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    line-height: 1;
+}
+.net-pill--ok {
+    background: rgba(86,175,116,.15);
+    color: #86d4a8;
+    border: 1px solid rgba(86,175,116,.4);
+}
+.net-pill--err {
+    background: rgba(251,113,133,.15);
+    color: #fbb1bc;
+    border: 1px solid rgba(251,113,133,.4);
+}
+.net-pill--warn {
+    background: rgba(251,191,36,.12);
+    color: #fbcf6e;
+    border: 1px solid rgba(251,191,36,.35);
+}
+.net-card__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    line-height: 1.4;
+    margin: 1px 0;
+}
+.net-card__lbl {
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: 9px;
+    font-weight: 600;
+    padding-top: 2px;
+}
+.net-card__val {
+    color: var(--ice);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: right;
+    word-break: break-word;
+    max-width: 60%;
+}
+.net-card__kind {
+    margin: 8px 0 4px;
+    padding: 4px 8px;
+    background: rgba(221,194,105,.06);
+    border-radius: 6px;
+    font-size: 10.5px;
+    text-align: center;
+    color: var(--mint-l);
+    letter-spacing: .04em;
+}
+.net-card__portals-lbl {
+    margin-top: 6px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+}
+.net-card__portals {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.net-portal {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+.net-portal--ok  {
+    background: rgba(86,175,116,.10);
+    color: #9adfb8;
+    border-color: rgba(86,175,116,.35);
+}
+.net-portal--err {
+    background: rgba(251,113,133,.10);
+    color: #fbb1bc;
+    border-color: rgba(251,113,133,.4);
+}
+.net-portal--wn  {
+    background: rgba(168,156,128,.10);
+    color: var(--smoke);
+    border-color: rgba(168,156,128,.32);
+}
+
+.net-tip {
+    margin: 4px 0 12px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(251,113,133,.08) 0%, rgba(20,16,8,.4) 100%);
+    border-left: 2px solid var(--rose);
+    border-radius: 4px 8px 8px 4px;
+}
+.net-tip__title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 12px;
+    font-weight: 460;
+    color: var(--rose);
+    margin-bottom: 4px;
+}
+.net-tip__line {
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--fog);
+    padding-left: 4px;
 }
 
 /* ──── Quick actions strip — Dashboard top toolbar ─────────────────────── */
@@ -4194,6 +4361,88 @@ with st.sidebar:
         '</div>',
         unsafe_allow_html=True,
     )
+
+    # ── Network status widget ─────────────────────────────────────────────
+    # Cached for 60s by the utility; we show it on every render but the
+    # actual network probes only fire when the cache expires.
+    try:
+        from utils.network_status import overall_status
+        _net = overall_status()
+    except Exception:
+        _net = None
+
+    if _net:
+        ip_info  = _net["ip"]
+        blocked  = _net["blocked_portals"]
+        clean    = _net["clean_portals"]
+        unknown  = _net["unknown_portals"]
+        all_ok   = _net["all_clean"]
+        ip_kind  = (
+            "vpn"     if ip_info.is_known_vpn else
+            "mobile"  if ip_info.is_mobile    else
+            "unknown"
+        )
+        kind_label = t(f"net.kind.{ip_kind}")
+        ip_str  = ip_info.ip or "—"
+        country = ip_info.country or "—"
+        org     = (ip_info.org or "—")[:32]
+
+        # Status pill
+        if all_ok:
+            pill_class = "net-pill net-pill--ok"
+            pill_txt   = "✓ " + t("net.portal.clean").upper()
+        elif blocked:
+            pill_class = "net-pill net-pill--err"
+            pill_txt   = f"✗ {len(blocked)}/{len(blocked) + len(clean) + len(unknown)} " + t("net.portal.blocked").upper()
+        else:
+            pill_class = "net-pill net-pill--warn"
+            pill_txt   = "? " + t("net.portal.unknown").upper()
+
+        portal_chips_html = ""
+        for p in (clean + blocked + unknown):
+            status = (
+                "ok"  if p in clean   else
+                "err" if p in blocked else
+                "wn"
+            )
+            portal_chips_html += f'<span class="net-portal net-portal--{status}">{p}</span>'
+
+        st.markdown(
+            f'<div class="net-card">'
+            f'  <div class="net-card__head">'
+            f'    <span class="net-card__title">{t("net.header")}</span>'
+            f'    <span class="{pill_class}">{pill_txt}</span>'
+            f'  </div>'
+            f'  <div class="net-card__row"><span class="net-card__lbl">{t("net.ip")}</span><span class="net-card__val">{ip_str}</span></div>'
+            f'  <div class="net-card__row"><span class="net-card__lbl">{t("net.country")}</span><span class="net-card__val">{country}</span></div>'
+            f'  <div class="net-card__row"><span class="net-card__lbl">{t("net.org")}</span><span class="net-card__val">{org}</span></div>'
+            f'  <div class="net-card__kind">{kind_label}</div>'
+            f'  <div class="net-card__portals-lbl">{t("net.portals.title")}</div>'
+            f'  <div class="net-card__portals">{portal_chips_html}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Recommendation panel — only when something is blocked
+        if blocked:
+            st.markdown(
+                f'<div class="net-tip">'
+                f'  <div class="net-tip__title">{t("net.tip.heading")}</div>'
+                f'  <div class="net-tip__line">{t("net.tip.line1")}</div>'
+                f'  <div class="net-tip__line">{t("net.tip.line2")}</div>'
+                f'  <div class="net-tip__line">{t("net.tip.line3")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        if st.button(t("net.refresh"), key="net_refresh_btn", use_container_width=True):
+            from utils.network_status import overall_status as _ovr
+            try:
+                _ovr.__globals__["_ip_cache"]    = None
+                _ovr.__globals__["_block_cache"] = {}
+            except Exception:
+                pass
+            st.rerun()
 
     # ── Navigation: grouped by purpose, not flat (i18n-aware) ─────────────
     # Each item carries a stable page_id (used by the if/elif chain) and
