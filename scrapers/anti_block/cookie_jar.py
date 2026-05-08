@@ -11,7 +11,8 @@ on the next run, which often triggers a stricter follow-up challenge.
 This module persists cookie jars per-source to ``data/cookies/<source>.json``
 and exposes:
 
-  * ``load_into_client(client, source)``  — populate an httpx.Client
+  * ``load_into_client(client, source)``  — populate an httpx.Client OR a
+                                            curl_cffi.requests.Session.
   * ``save_from_client(client, source)``  — extract + persist
   * ``load_into_playwright_context(context, source)`` /
     ``save_from_playwright_context(context, source)`` for browser-based scrapers
@@ -57,20 +58,41 @@ def _is_stale(saved_at: float) -> bool:
 
 # ── httpx.Client ─────────────────────────────────────────────────────────────
 
-def save_from_client(client: "httpx.Client", source: str) -> None:
-    """Persist every cookie currently in ``client.cookies``."""
+def _iter_cookies(client) -> list[dict[str, Any]]:
+    """Pull cookies from either httpx.Client or curl_cffi Session.
+
+    Both expose ``client.cookies`` but with slightly different shapes.
+    httpx → ``client.cookies.jar`` is a stdlib ``http.cookiejar.CookieJar``.
+    curl_cffi → ``client.cookies.jar`` is also a CookieJar (alias). We
+    iterate and normalise either into a flat dict list.
+    """
+    out: list[dict[str, Any]] = []
+    jar = getattr(client.cookies, "jar", None) or client.cookies
+    try:
+        # CookieJar yields http.cookiejar.Cookie instances on iteration
+        for c in jar:
+            out.append({
+                "name":   getattr(c, "name", None),
+                "value":  getattr(c, "value", None),
+                "domain": getattr(c, "domain", None) or "",
+                "path":   getattr(c, "path", "/") or "/",
+                "expires": getattr(c, "expires", None),
+                "secure": bool(getattr(c, "secure", False)),
+            })
+    except Exception as e:
+        log.debug("[cookie_jar] _iter_cookies failed: {e}", e=e)
+    return out
+
+
+def save_from_client(client, source: str) -> None:
+    """Persist every cookie currently in ``client.cookies``.
+
+    Works for both httpx.Client and curl_cffi.requests.Session — both
+    keep their cookies in a stdlib http.cookiejar.CookieJar.
+    """
     try:
         _ensure_dir()
-        cookies: list[dict[str, Any]] = []
-        for cookie in client.cookies.jar:
-            cookies.append({
-                "name":   cookie.name,
-                "value":  cookie.value,
-                "domain": cookie.domain,
-                "path":   cookie.path,
-                "expires": cookie.expires,
-                "secure": cookie.secure,
-            })
+        cookies = _iter_cookies(client)
         payload = {"saved_at": time.time(), "cookies": cookies}
         _path_for(source).write_text(json.dumps(payload, ensure_ascii=False))
         log.debug("[cookie_jar] {src} → saved {n} cookies", src=source, n=len(cookies))
@@ -78,9 +100,9 @@ def save_from_client(client: "httpx.Client", source: str) -> None:
         log.debug("[cookie_jar] save error for {src}: {e}", src=source, e=e)
 
 
-def load_into_client(client: "httpx.Client", source: str) -> bool:
+def load_into_client(client, source: str) -> bool:
     """
-    Replay cookies into a fresh httpx.Client.
+    Replay cookies into a fresh client (httpx.Client or curl_cffi Session).
     Returns True when at least one cookie was reused, False otherwise.
     """
     path = _path_for(source)
@@ -93,10 +115,14 @@ def load_into_client(client: "httpx.Client", source: str) -> bool:
             return False
         cookies = payload.get("cookies", [])
         for c in cookies:
-            client.cookies.set(
-                name=c["name"], value=c["value"],
-                domain=c["domain"], path=c.get("path", "/"),
-            )
+            try:
+                client.cookies.set(
+                    name=c["name"], value=c["value"],
+                    domain=c["domain"], path=c.get("path", "/"),
+                )
+            except Exception:
+                # curl_cffi versions sometimes choke on empty domains
+                continue
         log.debug("[cookie_jar] {src} ← loaded {n} cookies",
                   src=source, n=len(cookies))
         return bool(cookies)

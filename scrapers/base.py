@@ -481,30 +481,70 @@ class BaseScraper(ABC):
 
     def _build_client(self, follow_redirects: bool = True):
         """Build a fresh HTTP session with browser TLS fingerprint + anti-block
-        headers + optional proxy.
+        headers + optional proxy + persisted cookie jar.
 
         When curl_cffi is installed, this returns a session whose TLS
         handshake matches a real Chrome / Edge / Safari / Firefox build
         (rotated randomly), so DataDome / Akamai / Cloudflare-style
-        services no longer flag us on JA3 alone. When unavailable, falls
-        back to httpx (still an improvement over the bare default thanks
-        to the synthesised Sec-CH-UA headers in proxy_manager).
-
-        Cookies persist for the lifetime of the session — that matters
-        for portals that drop a "first-visit" cookie on the homepage and
-        validate it on subsequent searches.
+        services no longer flag us on JA3 alone. Cookies from prior
+        runs are replayed so the portal sees us as a returning visitor
+        rather than a first-time scraper.
         """
         from utils.http_client import build_sync_session
+        from scrapers.anti_block.cookie_jar import load_into_client
         proxy = self.proxy_manager.get_proxy()
         headers = self.proxy_manager.get_headers()
-        return build_sync_session(
+        client = build_sync_session(
             headers=headers,
             timeout=settings.request_timeout,
             follow_redirects=follow_redirects,
             proxy=proxy,
         )
+        # Replay yesterday's cookies if still fresh (TTL 5 days).
+        try:
+            replayed = load_into_client(client, self.SOURCE)
+            if replayed:
+                log.info("[{src}] replayed persisted cookies", src=self.SOURCE)
+        except Exception as e:
+            log.debug("[{src}] cookie replay failed: {e}", src=self.SOURCE, e=e)
+        # Track last URL hit per host for natural Referer chains.
+        self._last_url_by_host: dict[str, str] = {}
+        return client
 
-    def _warmup(self, client: httpx.Client, homepage_url: str) -> bool:
+    def _persist_cookies(self, client) -> None:
+        """Save the session's cookies to disk so the next run starts as a
+        'returning visitor'. Called from `run()` after a zone sweep."""
+        try:
+            from scrapers.anti_block.cookie_jar import save_from_client
+            save_from_client(client, self.SOURCE)
+        except Exception as e:
+            log.debug("[{src}] cookie persist failed: {e}", src=self.SOURCE, e=e)
+
+    def _set_referer_for(self, client, url: str) -> None:
+        """Set a natural Referer header for the next request. Mimics a user
+        browsing portal homepage → search → detail. Falls back to Google
+        search results when this is the first hit on a host (real users
+        often arrive that way)."""
+        from urllib.parse import urlparse
+        host = urlparse(url).netloc
+        last = self._last_url_by_host.get(host) if hasattr(self, "_last_url_by_host") else None
+        referer = last or f"https://www.google.com/search?q={host}"
+        try:
+            client.headers["Referer"] = referer
+            client.headers["Sec-Fetch-Site"] = "same-origin" if last else "cross-site"
+        except Exception:
+            pass
+
+    def _record_visited(self, url: str) -> None:
+        """Update the last-URL map after a successful fetch — feeds Referer."""
+        if not hasattr(self, "_last_url_by_host"):
+            self._last_url_by_host = {}
+        from urllib.parse import urlparse
+        host = urlparse(url).netloc
+        if host:
+            self._last_url_by_host[host] = url
+
+    def _warmup(self, client, homepage_url: str) -> bool:
         """Visit the portal's homepage before any zone search — gives the
         site a chance to drop its anti-bot cookie and the rate limiter a
         baseline timestamp. Idempotent: tracks per-host completion so it
@@ -519,6 +559,9 @@ class BaseScraper(ABC):
         if host in self._warmed_hosts:
             return True
         try:
+            # Pretend we arrived from a Google search — first hit only.
+            client.headers["Referer"] = f"https://www.google.com/search?q={host}"
+            client.headers["Sec-Fetch-Site"] = "cross-site"
             r = client.get(homepage_url)
             ok = (r.status_code == 200)
             log.info(
@@ -526,22 +569,29 @@ class BaseScraper(ABC):
                 src=self.SOURCE, host=host, code=r.status_code, sz=len(r.content) // 1024,
             )
             self._warmed_hosts.add(host)
+            self._record_visited(homepage_url)
             return ok
         except Exception as exc:
             log.warning("[{src}] warmup {host} failed: {e}", src=self.SOURCE, host=host, e=exc)
             return False
 
-    def _get(self, client: httpx.Client, url: str, params: dict = None) -> Optional[httpx.Response]:
+    def _get(self, client, url: str, params: dict = None):
         """
         Perform a GET with rate limiting and retry on failure.
         Returns None if all retries exhausted.
+
+        Sets a natural Referer header before each call (chained from the
+        last URL on the same host) and records the URL after success so
+        the next request looks like an organic click.
         """
         self.rate_limiter.wait()
+        self._set_referer_for(client, url)
         for attempt in range(settings.max_retries):
             try:
                 resp = client.get(url, params=params)
                 if resp.status_code == 200:
                     self.rate_limiter.record_success()
+                    self._record_visited(url)
                     return resp
                 if resp.status_code == 429:
                     log.warning("[{src}] 429 Too Many Requests — backoff", src=self.SOURCE)
@@ -555,24 +605,48 @@ class BaseScraper(ABC):
                     continue
                 log.warning("[{src}] HTTP {code} for {url}", src=self.SOURCE, code=resp.status_code, url=url)
                 return None
-            except (httpx.TimeoutException, httpx.ConnectError) as e:
+            except Exception as e:
+                # Cover both httpx and curl_cffi exception trees.
                 log.warning("[{src}] Request error attempt {a}: {e}", src=self.SOURCE, a=attempt + 1, e=e)
                 self.rate_limiter.backoff(attempt)
         return None
 
     # ── Public interface ──────────────────────────────────────────────────────
 
+    # Rotate the underlying HTTP session every N zones — gives us a new
+    # JA3 (curl_cffi profile rotation), a new User-Agent, and a fresh
+    # cookie jar (warmup re-runs naturally). Stops one IP+session looking
+    # like the same user that ran 22 freguesias in 30 minutes.
+    SESSION_ROTATE_EVERY: int = 5
+
     def run(self, zones: list[str] = None) -> ScraperResult:
         """
         Execute the scraper for all target zones.
         Returns a ScraperResult with all raw listing dicts collected.
+
+        Sessions rotate every SESSION_ROTATE_EVERY zones — new TLS
+        fingerprint, new UA, fresh cookie jar (with the prior jar
+        persisted to disk first). Reduces one-IP-one-session bot
+        signal across the long sweep.
         """
         zones = zones or settings.zones
         result = ScraperResult(source=self.SOURCE, batch_id=self.batch_id)
         log.info("[{src}] Starting scrape — zones: {zones}", src=self.SOURCE, zones=zones)
 
-        with self._build_client() as client:
+        client = self._build_client().__enter__()
+        zones_in_session = 0
+        try:
             for zone in zones:
+                if zones_in_session >= self.SESSION_ROTATE_EVERY:
+                    # Persist + rotate
+                    self._persist_cookies(client)
+                    try:
+                        client.__exit__(None, None, None)
+                    except Exception:
+                        pass
+                    log.info("[{src}] rotating session after {n} zones", src=self.SOURCE, n=zones_in_session)
+                    client = self._build_client().__enter__()
+                    zones_in_session = 0
                 try:
                     count_before = len(result.items)
                     for item in self.scrape_zone(client, zone):
@@ -584,6 +658,17 @@ class BaseScraper(ABC):
                     log.info("[{src}] Zone '{z}' → {n} listings", src=self.SOURCE, z=zone, n=found)
                 except Exception as exc:
                     result.fail(f"Zone '{zone}' failed: {exc}")
+                zones_in_session += 1
+        finally:
+            # Persist the final session's cookies and close cleanly.
+            try:
+                self._persist_cookies(client)
+            except Exception:
+                pass
+            try:
+                client.__exit__(None, None, None)
+            except Exception:
+                pass
 
         result.finish()
         return result

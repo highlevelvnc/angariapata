@@ -188,7 +188,24 @@ async def stealth_browser_context(
     from config.zone_config import get_random_user_agent
 
     ua = user_agent or get_random_user_agent()
-    vp = viewport or {"width": 1366, "height": 768}
+
+    # Real-world viewport mix — sampled from W3C public stats 2024/2025.
+    # Sticking to one viewport ("1366x768") across thousands of requests
+    # is itself a fingerprint, so we randomise per session.
+    _VIEWPORTS: tuple[dict, ...] = (
+        {"width": 1920, "height": 1080},  # most common desktop
+        {"width": 1536, "height": 864},   # Windows scaled 125%
+        {"width": 1440, "height": 900},   # 2nd-most macOS
+        {"width": 1366, "height": 768},   # legacy laptop
+        {"width": 2560, "height": 1440},  # 1440p monitors
+        {"width": 1680, "height": 1050},  # 16:10 monitors
+    )
+    vp = viewport or random.choice(_VIEWPORTS)
+
+    # Match locale + timezone to a Lisboa-shaped user; vary the locale
+    # tail to mimic different browser language preferences.
+    _LOCALE_VARIANTS = ("pt-PT", "pt-PT", "pt-PT", "en-US", "pt-BR")
+    locale = locale if locale != "pt-PT" else random.choice(_LOCALE_VARIANTS)
 
     # Optional: load saved storage_state from cookie jar
     storage_state_path = None
