@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import sys
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -365,6 +366,21 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
                                     "en": "2. Or toggle mobile data off/on (new CGNAT IP)"},
     "net.tip.line3":               {"pt": "3. Ou aguarda 6-24h para o IP descongelar",
                                     "en": "3. Or wait 6-24h for the IP to cool down"},
+
+    # ── Async run progress strip ───────────────────────────────────────────
+    "run.live.eyebrow":           {"pt": "MOTOR EM CURSO",                "en": "ENGINE RUNNING"},
+    "run.live.elapsed":           {"pt": "Tempo decorrido",               "en": "Elapsed"},
+    "run.live.zones":             {"pt": "Zonas",                         "en": "Zones"},
+    "run.live.listings":          {"pt": "Anúncios capturados",           "en": "Listings captured"},
+    "run.live.last_zone":         {"pt": "A processar",                   "en": "Processing"},
+    "run.live.blocks":            {"pt": "Bloqueios",                     "en": "Blocks"},
+    "run.live.stop":              {"pt": "Parar agora",                   "en": "Stop now"},
+    "run.live.refresh":           {"pt": "Auto-refresh a cada 5s",        "en": "Auto-refresh every 5s"},
+    "run.done.eyebrow.ok":        {"pt": "MOTOR PRONTO",                  "en": "ENGINE DONE"},
+    "run.done.eyebrow.ko":        {"pt": "MOTOR PAROU",                   "en": "ENGINE STOPPED"},
+    "run.done.dismiss":           {"pt": "Fechar",                        "en": "Dismiss"},
+    "run.starting":               {"pt": "A arrancar o motor…",           "en": "Starting the engine…"},
+    "run.already_running":        {"pt": "Já há um run em curso.",        "en": "A run is already in flight."},
 }
 
 
@@ -2349,6 +2365,143 @@ html { scroll-behavior: smooth; }
     line-height: 1.45;
     color: var(--fog);
     padding-left: 4px;
+}
+
+/* ──── Live run-progress strip ─────────────────────────────────────────── */
+.run-live {
+    position: relative;
+    margin: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    border-radius: 14px;
+    background:
+        radial-gradient(800px 200px at 0% 0%, rgba(221,194,105,.10), transparent 65%),
+        linear-gradient(180deg, rgba(20,16,8,.7) 0%, rgba(10,8,6,.95) 100%);
+    border: 1px solid rgba(221,194,105,.32);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 8px 28px -10px rgba(221,194,105,.30);
+    overflow: hidden;
+}
+.run-live::before {
+    /* hairline gold rule top */
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--mint-d) 15%, var(--mint) 50%, var(--mint-d) 85%,
+        transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 4s linear infinite;
+}
+.run-live__pulse {
+    position: absolute;
+    top: 18px; left: 18px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 0 0 rgba(221,194,105,.6);
+    animation: glowPulse 1.6s ease-out infinite;
+}
+.run-live__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    padding-left: 24px;
+}
+.run-live__eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--mint);
+}
+.run-live__sources {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 320;
+    font-size: 13px;
+    color: var(--fog);
+}
+.run-live__grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--sp-3) var(--sp-5);
+    align-items: end;
+}
+@media (max-width: 900px) {
+    .run-live__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.run-live__num {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 72, "SOFT" 0;
+    font-weight: 320;
+    font-size: clamp(22px, 3vw, 36px);
+    line-height: 1;
+    letter-spacing: -.02em;
+    color: var(--ice);
+    font-feature-settings: "lnum","tnum";
+}
+.run-live__num--zone {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mint-l);
+    letter-spacing: .04em;
+    word-break: break-word;
+}
+.run-live__num--err { color: var(--rose); }
+.run-live__lbl {
+    font-family: var(--font-body);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-top: 4px;
+}
+
+/* ── Done banner — appears for ~60s after run completes ──────────────── */
+.run-done {
+    margin: var(--sp-3) 0 var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(86,175,116,.10) 0%, rgba(20,16,8,.5) 100%);
+    border-left: 3px solid #56af74;
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+}
+.run-done--ko {
+    background: linear-gradient(180deg, rgba(251,113,133,.10) 0%, rgba(20,16,8,.5) 100%);
+    border-left-color: var(--rose);
+}
+.run-done__eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: #86d4a8;
+}
+.run-done--ko .run-done__eyebrow { color: var(--rose); }
+.run-done__row {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--fog);
+    display: flex;
+    gap: var(--sp-3);
+}
+.run-done__row b {
+    font-weight: 460;
+    font-style: normal;
+    color: var(--ice);
+    margin-right: 2px;
 }
 
 /* ──── Quick actions strip — Dashboard top toolbar ─────────────────────── */
@@ -4835,6 +4988,74 @@ if page == "&#128202;  Dashboard":
         unsafe_allow_html=True,
     )
 
+    # ── Live run-progress strip (async pipeline) ──────────────────────────
+    # When a scrape is in flight, the strip below replaces the quick-action
+    # CTAs and shows live counters. The pipeline is a real OS subprocess —
+    # the dashboard never blocks, even on a 30-min full run.
+    from utils import run_state as _run_state
+    _run_state.cleanup_stale()
+    _run_info = _run_state.status()
+
+    if _run_info.alive:
+        # ── LIVE: editorial progress strip ────────────────────────────────
+        elapsed_min, elapsed_sec = divmod(int(_run_info.elapsed_s), 60)
+        elapsed_str = f"{elapsed_min:02d}:{elapsed_sec:02d}"
+        zones_str = (
+            f"{_run_info.zones_done}/{_run_info.zones_total}"
+            if _run_info.zones_total else f"{_run_info.zones_done}"
+        )
+        last_zone = _run_info.last_zone or "—"
+        st.markdown(
+            f'<div class="run-live">'
+            f'  <div class="run-live__pulse"></div>'
+            f'  <div class="run-live__head">'
+            f'    <span class="run-live__eyebrow">{t("run.live.eyebrow")}</span>'
+            f'    <span class="run-live__sources">{" · ".join(_run_info.sources) or "—"}</span>'
+            f'  </div>'
+            f'  <div class="run-live__grid">'
+            f'    <div><div class="run-live__num">{elapsed_str}</div><div class="run-live__lbl">{t("run.live.elapsed")}</div></div>'
+            f'    <div><div class="run-live__num">{zones_str}</div><div class="run-live__lbl">{t("run.live.zones")}</div></div>'
+            f'    <div><div class="run-live__num">{_run_info.listings}</div><div class="run-live__lbl">{t("run.live.listings")}</div></div>'
+            f'    <div><div class="run-live__num run-live__num--zone">{last_zone}</div><div class="run-live__lbl">{t("run.live.last_zone")}</div></div>'
+            f'    <div><div class="run-live__num {"run-live__num--err" if _run_info.blocked_hits else ""}">{_run_info.blocked_hits}</div><div class="run-live__lbl">{t("run.live.blocks")}</div></div>'
+            f'  </div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        rl1, rl2 = st.columns([2, 1])
+        with rl1:
+            st.caption("⟳  " + t("run.live.refresh"))
+        with rl2:
+            if st.button(f"⏹  {t('run.live.stop')}", key="run_stop_btn",
+                         use_container_width=True):
+                _run_state.stop()
+                st.toast("✓  stop signal sent", icon="⏹")
+                st.rerun()
+        # Auto-refresh every 5 seconds while alive
+        try:
+            import time as _time
+            _time.sleep(5)
+            st.rerun()
+        except Exception:
+            pass
+
+    elif _run_info.finished_at and (time.time() - _run_info.finished_at) < 60:
+        # ── DONE: status banner for 60 seconds, then auto-collapse ────────
+        ok = _run_info.finished_ok is True
+        eyebrow = t("run.done.eyebrow.ok") if ok else t("run.done.eyebrow.ko")
+        klass = "run-done" if ok else "run-done run-done--ko"
+        st.markdown(
+            f'<div class="{klass}">'
+            f'  <div class="run-done__eyebrow">{eyebrow}</div>'
+            f'  <div class="run-done__row">'
+            f'    <span><b>{_run_info.zones_done}</b> zonas</span>'
+            f'    <span><b>{_run_info.listings}</b> anúncios</span>'
+            f'    <span>{int(_run_info.elapsed_s // 60)} min</span>'
+            f'  </div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
     # ── Quick actions strip — the operator's "next step" toolbar ──────────
     # 4 columns of compact CTAs that map to the most common daily actions.
     # All buttons hook into existing flows (page change / pipeline run / export).
@@ -4845,18 +5066,14 @@ if page == "&#128202;  Dashboard":
             st.session_state["__page"] = "&#128293;  HOT Focus"
             st.rerun()
     with qa2:
-        if st.button(t("qa.update"), key="qa_run", use_container_width=True):
-            with st.spinner(t("qa.update.spinner")):
-                try:
-                    from pipeline.runner import PipelineRunner
-                    from scoring.scorer import Scorer
-                    r = PipelineRunner().run_full()
-                    Scorer().score_all_pending()
-                    st.cache_data.clear()
-                    st.success(t("qa.update.success", a=r.leads_created, b=r.leads_updated))
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro: {e}")
+        if st.button(t("qa.update"), key="qa_run", use_container_width=True,
+                     disabled=_run_info.alive):
+            if _run_info.alive:
+                st.toast(t("run.already_running"), icon="⏳")
+            else:
+                _run_state.start()
+                st.toast(t("run.starting"), icon="🚀")
+                st.rerun()
     with qa3:
         if st.button(t("qa.export"), key="qa_export", use_container_width=True):
             try:
