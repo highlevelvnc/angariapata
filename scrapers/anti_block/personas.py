@@ -50,7 +50,7 @@ class Persona:
     """A coherent (OS, browser, version) identity. The fields below
     must agree with each other — never tweak one without re-checking
     the others (e.g. don't ship a Mac UA with Sec-CH-UA-Platform:
-    "Windows")."""
+    "Windows" or a Mac with an Intel UHD Graphics WebGL renderer)."""
     name:        str          # human-readable (used in logs + cookie keys)
     ua:          str
     profile:    str           # curl_cffi impersonate profile
@@ -62,6 +62,14 @@ class Persona:
     viewport:    tuple[int, int]
     locale:      str
     timezone:    str           # IANA name
+    # ── Browser fingerprint (Playwright-only — irrelevant to httpx) ────
+    webgl_vendor:   str = "Google Inc. (Apple)"
+    webgl_renderer: str = (
+        "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)"
+    )
+    canvas_seed:    int = 7  # deterministic noise per persona
+    cores:          int = 8
+    memory_gb:      int = 8
 
 
 # ─── Persona catalogue ─────────────────────────────────────────────────────
@@ -86,6 +94,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1440, 900),
         locale="pt-PT",
         timezone="Europe/Lisbon",
+        webgl_vendor="Google Inc. (Intel)",
+        webgl_renderer="ANGLE (Intel, Intel(R) Iris(TM) Plus Graphics 645, OpenGL 4.1)",
+        canvas_seed=12,
+        cores=8, memory_gb=16,
     ),
     Persona(
         name="mac_chrome_arm",
@@ -100,6 +112,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1512, 982),
         locale="pt-PT",
         timezone="Europe/Lisbon",
+        webgl_vendor="Google Inc. (Apple)",
+        webgl_renderer="ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)",
+        canvas_seed=37,
+        cores=8, memory_gb=16,
     ),
     Persona(
         name="mac_safari",
@@ -114,6 +130,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1440, 900),
         locale="pt-PT",
         timezone="Europe/Lisbon",
+        webgl_vendor="Apple Inc.",
+        webgl_renderer="Apple M2",
+        canvas_seed=51,
+        cores=8, memory_gb=8,
     ),
     Persona(
         name="win_chrome",
@@ -128,6 +148,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1920, 1080),
         locale="pt-PT",
         timezone="Europe/Lisbon",
+        webgl_vendor="Google Inc. (NVIDIA)",
+        webgl_renderer="ANGLE (NVIDIA, NVIDIA GeForce GTX 1660 Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        canvas_seed=82,
+        cores=8, memory_gb=16,
     ),
     Persona(
         name="win_edge",
@@ -142,6 +166,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1536, 864),
         locale="pt-PT",
         timezone="Europe/Lisbon",
+        webgl_vendor="Google Inc. (Intel)",
+        webgl_renderer="ANGLE (Intel, Intel(R) UHD Graphics 630, D3D11)",
+        canvas_seed=104,
+        cores=4, memory_gb=8,
     ),
     Persona(
         name="linux_firefox",
@@ -155,6 +183,10 @@ PERSONAS: tuple[Persona, ...] = (
         viewport=(1920, 1080),
         locale="en-US",
         timezone="Europe/Lisbon",
+        webgl_vendor="Mesa",
+        webgl_renderer="Mesa Intel(R) UHD Graphics 630 (CFL GT2)",
+        canvas_seed=219,
+        cores=4, memory_gb=8,
     ),
 )
 

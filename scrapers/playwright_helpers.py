@@ -118,6 +118,152 @@ Function.prototype.toString = function () {
     }
     return origToString.apply(this, arguments);
 };
+
+// 10. WebGL fingerprint — vendor + renderer pinned to the persona.
+//     DataDome/Akamai compare against a registry of "real GPU strings"
+//     and flag generic ANGLE entries. PERSONA_WEBGL_* are templated by
+//     the launcher.
+const _PERSONA_WEBGL_VENDOR   = "%%WEBGL_VENDOR%%";
+const _PERSONA_WEBGL_RENDERER = "%%WEBGL_RENDERER%%";
+const _origGetParameter = WebGLRenderingContext.prototype.getParameter;
+WebGLRenderingContext.prototype.getParameter = function (p) {
+    // 0x9245 = UNMASKED_VENDOR_WEBGL, 0x9246 = UNMASKED_RENDERER_WEBGL,
+    // 0x1F00 = VENDOR, 0x1F01 = RENDERER
+    if (p === 0x9245 || p === 0x1F00) return _PERSONA_WEBGL_VENDOR;
+    if (p === 0x9246 || p === 0x1F01) return _PERSONA_WEBGL_RENDERER;
+    return _origGetParameter.call(this, p);
+};
+if (typeof WebGL2RenderingContext !== "undefined") {
+    const _origGetParameter2 = WebGL2RenderingContext.prototype.getParameter;
+    WebGL2RenderingContext.prototype.getParameter = function (p) {
+        if (p === 0x9245 || p === 0x1F00) return _PERSONA_WEBGL_VENDOR;
+        if (p === 0x9246 || p === 0x1F01) return _PERSONA_WEBGL_RENDERER;
+        return _origGetParameter2.call(this, p);
+    };
+}
+
+// 11. Canvas fingerprint noise — invisible per-pixel jitter.
+//     Sites read canvas → toDataURL() to compute a hash. Even one bit
+//     of noise destroys the deterministic fingerprint, but identical
+//     noise across reads keeps the canvas LOOKING the same to a real
+//     user. PERSONA_CANVAS_SEED is templated by the launcher so each
+//     persona has its own stable hash.
+const _PERSONA_CANVAS_SEED = %%CANVAS_SEED%%;
+(function () {
+    function shift(value, seed, idx) {
+        const s = (value + seed + idx) | 0;
+        return ((s ^ (s >>> 13)) * 16807) % 256;
+    }
+    const _toBlob       = HTMLCanvasElement.prototype.toBlob;
+    const _toDataURL    = HTMLCanvasElement.prototype.toDataURL;
+    const _getImageData = CanvasRenderingContext2D.prototype.getImageData;
+    function applyNoise(canvas) {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const w = canvas.width, h = canvas.height;
+        if (w * h === 0 || w * h > 2_000_000) return;     // skip absurd sizes
+        const img = ctx.getImageData(0, 0, w, h);
+        for (let i = 0; i < img.data.length; i += 4) {
+            // tiny noise on alpha-bearing pixels only — invisible to users
+            if (img.data[i + 3] < 250) continue;
+            img.data[i]   = (img.data[i]   ^ ((shift(img.data[i],   _PERSONA_CANVAS_SEED, i)     & 1))) & 0xff;
+            img.data[i+1] = (img.data[i+1] ^ ((shift(img.data[i+1], _PERSONA_CANVAS_SEED, i + 1) & 1))) & 0xff;
+            img.data[i+2] = (img.data[i+2] ^ ((shift(img.data[i+2], _PERSONA_CANVAS_SEED, i + 2) & 1))) & 0xff;
+        }
+        ctx.putImageData(img, 0, 0);
+    }
+    HTMLCanvasElement.prototype.toBlob = function (cb, ...rest) {
+        try { applyNoise(this); } catch (_) {}
+        return _toBlob.apply(this, [cb, ...rest]);
+    };
+    HTMLCanvasElement.prototype.toDataURL = function (...rest) {
+        try { applyNoise(this); } catch (_) {}
+        return _toDataURL.apply(this, rest);
+    };
+    CanvasRenderingContext2D.prototype.getImageData = function (...rest) {
+        const data = _getImageData.apply(this, rest);
+        for (let i = 0; i < data.data.length; i += 4) {
+            if (data.data[i + 3] < 250) continue;
+            data.data[i]     = (data.data[i]     ^ ((shift(data.data[i],     _PERSONA_CANVAS_SEED, i)     & 1))) & 0xff;
+            data.data[i + 1] = (data.data[i + 1] ^ ((shift(data.data[i + 1], _PERSONA_CANVAS_SEED, i + 1) & 1))) & 0xff;
+            data.data[i + 2] = (data.data[i + 2] ^ ((shift(data.data[i + 2], _PERSONA_CANVAS_SEED, i + 2) & 1))) & 0xff;
+        }
+        return data;
+    };
+})();
+
+// 12. AudioContext fingerprint — DataDome reads getChannelData() to
+//     hash subtle GPU-side audio rendering differences. We add ~1e-7
+//     noise per sample, deterministic per persona so the hash is
+//     stable across reads.
+(function () {
+    if (typeof AudioBuffer === "undefined") return;
+    const _origGetChannelData = AudioBuffer.prototype.getChannelData;
+    AudioBuffer.prototype.getChannelData = function (channel) {
+        const data = _origGetChannelData.call(this, channel);
+        if (data && data.length) {
+            const seed = _PERSONA_CANVAS_SEED * 0.000001;
+            for (let i = 0; i < data.length; i += 1024) {
+                data[i] = data[i] + seed;
+            }
+        }
+        return data;
+    };
+})();
+
+// 13. Battery API — real Chrome reports {level: 0.x, charging: bool}.
+//     Headless reports nothing → flagged. Persona-stable values mean
+//     the same "device" reports the same battery story across visits.
+(function () {
+    if (!navigator.getBattery) return;
+    const seed = _PERSONA_CANVAS_SEED;
+    const level    = 0.40 + (seed % 50) / 100;     // 0.40-0.89
+    const charging = (seed % 2) === 0;
+    navigator.getBattery = function () {
+        return Promise.resolve({
+            charging:        charging,
+            level:           level,
+            chargingTime:    charging ? Infinity : 0,
+            dischargingTime: charging ? 0 : Infinity,
+            addEventListener: function () {},
+            removeEventListener: function () {},
+            dispatchEvent:   function () { return true; },
+        });
+    };
+})();
+
+// 14. WebRTC IP leak block — STUN/ICE candidates leak the LAN IP
+//     even through proxies. Replace RTCPeerConnection so SDPs
+//     contain no host candidates.
+(function () {
+    const _origPC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    if (!_origPC) return;
+    const Patched = function (config, ...rest) {
+        if (config && config.iceServers) {
+            // Strip all but TURN servers — STUN is the leak vector.
+            config.iceServers = (config.iceServers || []).filter(
+                s => !(s.urls || "").toString().includes("stun")
+            );
+        }
+        const pc = new _origPC(config, ...rest);
+        const _origCreateOffer  = pc.createOffer.bind(pc);
+        const _origCreateAnswer = pc.createAnswer.bind(pc);
+        function scrubSdp(sdp) {
+            if (!sdp || !sdp.sdp) return sdp;
+            sdp.sdp = sdp.sdp
+                .split("\\n")
+                .filter(line => !/typ host/.test(line) && !/typ srflx raddr/.test(line))
+                .join("\\n");
+            return sdp;
+        }
+        pc.createOffer  = function (...a) { return _origCreateOffer(...a).then(scrubSdp); };
+        pc.createAnswer = function (...a) { return _origCreateAnswer(...a).then(scrubSdp); };
+        return pc;
+    };
+    Patched.prototype = _origPC.prototype;
+    window.RTCPeerConnection         = Patched;
+    window.webkitRTCPeerConnection   = Patched;
+})();
 """
 
 
@@ -160,6 +306,29 @@ _CONSENT_SELECTORS: tuple[str, ...] = (
 
 # ── Public helpers ───────────────────────────────────────────────────────────
 
+def _materialise_stealth_init(persona=None) -> str:
+    """Substitute persona-specific tokens into _STEALTH_INIT_JS.
+
+    When ``persona`` is None we use safe Mac-Apple defaults — the
+    legacy callers that don't yet pass a persona keep working without
+    leaking a "fingerprint matches no real device" bug.
+    """
+    if persona is None:
+        webgl_vendor   = "Google Inc. (Apple)"
+        webgl_renderer = "ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)"
+        canvas_seed    = 7
+    else:
+        webgl_vendor   = persona.webgl_vendor
+        webgl_renderer = persona.webgl_renderer
+        canvas_seed    = persona.canvas_seed
+    return (
+        _STEALTH_INIT_JS
+        .replace("%%WEBGL_VENDOR%%",   webgl_vendor)
+        .replace("%%WEBGL_RENDERER%%", webgl_renderer)
+        .replace("%%CANVAS_SEED%%",    str(canvas_seed))
+    )
+
+
 @contextlib.asynccontextmanager
 async def stealth_browser_context(
     *,
@@ -169,9 +338,15 @@ async def stealth_browser_context(
     locale:             str           = "pt-PT",
     timezone_id:        str           = "Europe/Lisbon",
     persist_state_for:  Optional[str] = None,
+    persona            = None,
 ) -> AsyncIterator:
     """
     Async context manager — yields a fully-stealth-patched BrowserContext.
+
+    ``persona`` (Persona dataclass) anchors the entire fingerprint —
+    UA, viewport, locale, timezone, WebGL renderer, canvas noise seed
+    — to a single coherent identity that returns to the host across
+    runs. When None, defaults to a sensible Mac+Chrome combination.
 
     ``persist_state_for`` (if set) loads a saved storage_state for that
     source slug at entry, and saves it back at exit. Cookies survive
@@ -187,7 +362,19 @@ async def stealth_browser_context(
 
     from config.zone_config import get_random_user_agent
 
-    ua = user_agent or get_random_user_agent()
+    # When a persona is given, every field flows from it; the explicit
+    # kwargs above are honoured only if the caller really wanted to
+    # override (rare).
+    if persona is not None:
+        ua = user_agent or persona.ua
+        if not viewport:
+            viewport = {"width": persona.viewport[0], "height": persona.viewport[1]}
+        if locale == "pt-PT":
+            locale = persona.locale
+        if timezone_id == "Europe/Lisbon":
+            timezone_id = persona.timezone
+    else:
+        ua = user_agent or get_random_user_agent()
 
     # Real-world viewport mix — sampled from W3C public stats 2024/2025.
     # Sticking to one viewport ("1366x768") across thousands of requests
@@ -240,7 +427,7 @@ async def stealth_browser_context(
                 context_kwargs["storage_state"] = storage_state_path
 
             context = await browser.new_context(**context_kwargs)
-            await context.add_init_script(_STEALTH_INIT_JS)
+            await context.add_init_script(_materialise_stealth_init(persona))
 
             try:
                 yield context
