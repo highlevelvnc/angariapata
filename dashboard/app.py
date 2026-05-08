@@ -2385,6 +2385,328 @@ html { scroll-behavior: smooth; }
     padding-left: 4px;
 }
 
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  LEAD DETAIL MAGAZINE MODAL — st.dialog                                  */
+/*  The moment-of-truth surface. When the agent clicks a lead card on       */
+/*  Top Accionáveis, this modal opens. Layout: photo left, editorial right. */
+/*  Big italic gold price, Sec-CH-UA-tier badge, WhatsApp pill gigante.     */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.dlg-photo-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(221,194,105,.18);
+    background: linear-gradient(180deg, rgba(20,16,8,.55) 0%, rgba(10,8,6,.85) 100%);
+    aspect-ratio: 4/3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dlg-photo-wrap img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+.dlg-photo-stub {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--smoke);
+    letter-spacing: .04em;
+}
+.dlg-source {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+}
+.dlg-source__lbl   { color: var(--slate); }
+.dlg-source__val   { color: var(--mint-l); font-weight: 600; }
+.dlg-source__link  {
+    color: var(--mint) !important;
+    text-decoration: none !important;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 12.5px;
+    letter-spacing: .02em;
+    text-transform: none;
+    border-bottom: 1px dotted rgba(221,194,105,.4) !important;
+}
+.dlg-source__link:hover { color: var(--ice) !important; }
+
+.dlg-eyebrow {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.dlg-eyebrow .dlg-sep {
+    color: var(--smoke);
+    opacity: .6;
+}
+.dlg-chip {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    margin-left: 4px;
+}
+.dlg-chip--fsbo {
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 100%);
+    color: var(--ink-00);
+    box-shadow: 0 4px 10px -4px rgba(221,194,105,.5);
+}
+.dlg-chip--agency {
+    background: rgba(168,134,26,.12);
+    color: var(--mint-d);
+    border: 1px solid rgba(168,134,26,.3);
+}
+
+.dlg-title {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 32, "SOFT" 30;
+    font-weight: 420;
+    font-size: clamp(18px, 1.8vw, 24px);
+    line-height: 1.3;
+    color: var(--ice);
+    letter-spacing: -.012em;
+    margin-bottom: 10px;
+    max-width: 50ch;
+}
+
+.dlg-price {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80;
+    font-weight: 320;
+    font-size: clamp(40px, 5.4vw, 64px);
+    line-height: 1;
+    letter-spacing: -.02em;
+    background: linear-gradient(180deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-feature-settings: "lnum","tnum";
+    margin-bottom: 6px;
+}
+.dlg-spec {
+    font-family: var(--font-body);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--smoke);
+    margin-bottom: 12px;
+}
+.dlg-spec b {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 480;
+    font-size: 1.4em;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ice);
+    margin-right: 2px;
+}
+.dlg-rule {
+    height: 1px;
+    margin: 10px 0;
+    background: linear-gradient(90deg, var(--mint) 0%, transparent 60%);
+    opacity: .45;
+}
+
+.dlg-tier {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-family: var(--font-body);
+}
+.dlg-tier__num {
+    font-family: var(--font-display);
+    font-variation-settings: "opsz" 32;
+    font-weight: 460;
+    font-size: 22px;
+    line-height: 1;
+}
+.dlg-tier__lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+}
+.dlg-tier--hot  {
+    background: rgba(251,113,133,.12);
+    border: 1px solid rgba(251,113,133,.32);
+    color: var(--rose);
+}
+.dlg-tier--warm {
+    background: rgba(251,191,36,.10);
+    border: 1px solid rgba(251,191,36,.30);
+    color: var(--amber);
+}
+.dlg-tier--cold {
+    background: rgba(168,156,128,.10);
+    border: 1px solid rgba(168,156,128,.30);
+    color: var(--smoke);
+}
+
+.dlg-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 6px 0 8px;
+}
+.dlg-cta--empty {
+    padding: 12px 14px;
+    background: rgba(168,156,128,.08);
+    border-radius: 10px;
+    color: var(--smoke);
+    font-style: italic;
+    font-family: var(--font-display);
+    font-size: 13px;
+}
+.dlg-cta__wa {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--mint-l) 0%, var(--mint) 60%, var(--mint-d) 100%);
+    color: var(--ink-00) !important;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: .02em;
+    text-decoration: none !important;
+    border: none !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 12px 28px -8px rgba(221,194,105,.55);
+    transition: transform .2s, box-shadow .2s;
+}
+.dlg-cta__wa:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.5),
+        0 16px 36px -8px rgba(221,194,105,.85);
+}
+.dlg-cta__call {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    border-radius: 999px;
+    background: rgba(221,194,105,.06);
+    border: 1px solid rgba(221,194,105,.32);
+    color: var(--ice) !important;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13.5px;
+    text-decoration: none !important;
+    transition: background .2s, border-color .2s;
+}
+.dlg-cta__call:hover {
+    background: rgba(221,194,105,.12);
+    border-color: rgba(221,194,105,.5);
+}
+.dlg-email {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--mint-l) !important;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 13px;
+    text-decoration: none !important;
+    border-bottom: 1px dotted rgba(221,194,105,.4) !important;
+}
+
+.dlg-section-lbl,
+.dlg-desc-lbl {
+    margin-top: 22px;
+    margin-bottom: 8px;
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--mint);
+}
+.dlg-desc {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 16;
+    font-weight: 320;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--fog);
+    background: rgba(20,16,8,.4);
+    padding: 12px 14px;
+    border-left: 2px solid rgba(221,194,105,.32);
+    border-radius: 4px 8px 8px 4px;
+}
+
+.dlg-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.dlg-note {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(20,16,8,.4);
+    border-left: 2px solid var(--mint);
+    border-radius: 4px 8px 8px 4px;
+}
+.dlg-note__time {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: var(--slate);
+    white-space: nowrap;
+    min-width: 80px;
+    padding-top: 1px;
+}
+.dlg-note__body {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ice);
+}
+
+/* "Open detail" button on lot cards — gold pill, small, restrained. */
+.lot button[data-testid="stBaseButton-secondary"][title*="Abrir"],
+.lot button[data-testid="stBaseButton-secondary"][title*="Open"] {
+    background: rgba(221,194,105,.06) !important;
+    border: 1px solid rgba(221,194,105,.32) !important;
+    color: var(--mint-l) !important;
+    font-family: var(--font-body) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: .14em !important;
+    padding: 4px 10px !important;
+    min-height: 24px !important;
+}
+
 /* ──── Persona health rows ─────────────────────────────────────────────── */
 .ph-host {
     font-family: var(--font-display);
@@ -3859,6 +4181,226 @@ def render_photo_gallery(lead) -> None:
     img = _fetch_image_bytes(lead.image_url)
     if img:
         st.image(img, use_container_width=True)
+
+
+@st.dialog(" ", width="large")
+def show_lead_dialog(lead_id: int) -> None:
+    """Magazine-style lead detail modal — the moment-of-truth surface
+    of the product. When the agent clicks a lead card on Top Accionáveis,
+    this modal opens with: editorial header (eyebrow · serif italic gold
+    price · spec strip · phone CTA), photo (if any), notes timeline,
+    and CRM stage move-buttons. All in one focused view."""
+    from sqlalchemy import select
+    from storage.database import get_db
+    from storage.models import Lead, CRMNote
+    from datetime import datetime as _dt, timezone as _tz
+
+    with get_db() as db:
+        lead = db.execute(select(Lead).where(Lead.id == lead_id)).scalar_one_or_none()
+        if not lead:
+            st.error("Lead não encontrado.")
+            return
+        notes = db.execute(
+            select(CRMNote).where(CRMNote.lead_id == lead_id)
+                           .order_by(CRMNote.created_at.desc())
+                           .limit(8)
+        ).scalars().all()
+
+        # Detach so we can use after the session closes
+        lead_data = {
+            "id":          lead.id,
+            "title":       lead.title or "—",
+            "price":       lead.price,
+            "area_m2":     lead.area_m2,
+            "bedrooms":    getattr(lead, "bedrooms", None),
+            "bathrooms":   getattr(lead, "bathrooms", None),
+            "typology":    lead.typology or "—",
+            "zone":        lead.zone or "—",
+            "score":       lead.score or 0,
+            "score_label": lead.score_label or "COLD",
+            "owner_type":  lead.owner_type or "",
+            "agency_name": lead.agency_name,
+            "phone":       lead.contact_phone,
+            "email":       lead.contact_email,
+            "url":         lead.url,
+            "source":      lead.source or "—",
+            "image_url":   getattr(lead, "image_url", None),
+            "first_seen":  lead.first_seen_at,
+            "days_market": getattr(lead, "days_on_market", 0) or 0,
+            "crm_stage":   lead.crm_stage or "novo",
+            "description": (lead.description or "")[:600],
+        }
+        notes_data = [
+            {
+                "body":       n.note,
+                "type":       n.note_type or "internal",
+                "created_at": n.created_at,
+            }
+            for n in notes
+        ]
+
+    # ── Header strip — score + tier + close hint ─────────────────────
+    tier_color_class = (
+        "dlg-tier--hot"  if lead_data["score_label"] == "HOT"  else
+        "dlg-tier--warm" if lead_data["score_label"] == "WARM" else
+        "dlg-tier--cold"
+    )
+    own_chip = ""
+    own = (lead_data["owner_type"] or "").lower()
+    if own == "fsbo":
+        own_chip = '<span class="dlg-chip dlg-chip--fsbo">PROPRIETÁRIO DIRECTO</span>'
+    elif own == "agency":
+        own_chip = '<span class="dlg-chip dlg-chip--agency">AGÊNCIA</span>'
+
+    price_str = (
+        f"{int(lead_data['price']):,} €".replace(",", " ")
+        if lead_data["price"] else "Preço sob consulta"
+    )
+
+    spec_items = []
+    if lead_data["area_m2"]:
+        spec_items.append(f'<b>{int(lead_data["area_m2"])}</b> m²')
+    if lead_data["bedrooms"]:
+        spec_items.append(f'<b>{lead_data["bedrooms"]}</b> qtos')
+    if lead_data["bathrooms"]:
+        spec_items.append(f'<b>{lead_data["bathrooms"]}</b> wc')
+    spec_items.append(f'<b>{lead_data["days_market"]}</b> dias no mercado')
+    spec_strip = " · ".join(spec_items)
+
+    # ── Two-column layout: photo left, editorial right ─────────────────
+    col_img, col_info = st.columns([1, 1.05], gap="medium")
+
+    with col_img:
+        st.markdown('<div class="dlg-photo-wrap">', unsafe_allow_html=True)
+        if lead_data["image_url"]:
+            try:
+                st.image(lead_data["image_url"], use_container_width=True)
+            except Exception:
+                st.markdown('<div class="dlg-photo-stub">📷</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="dlg-photo-stub">📷  Sem foto</div>',
+                        unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        # Source + URL
+        st.markdown(
+            f'<div class="dlg-source">'
+            f'  <span class="dlg-source__lbl">FONTE</span>'
+            f'  <span class="dlg-source__val">{lead_data["source"].upper()}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if lead_data["url"]:
+            st.markdown(
+                f'<div class="dlg-source"><a href="{lead_data["url"]}" target="_blank" '
+                f'class="dlg-source__link">↗  abrir anúncio original</a></div>',
+                unsafe_allow_html=True,
+            )
+
+    with col_info:
+        st.markdown(
+            f'<div class="dlg-eyebrow">{lead_data["typology"].upper()}'
+            f'<span class="dlg-sep">·</span>{lead_data["zone"].upper()}{own_chip}</div>'
+            f'<div class="dlg-title">{lead_data["title"][:90]}</div>'
+            f'<div class="dlg-price">{price_str}</div>'
+            f'<div class="dlg-spec">{spec_strip}</div>'
+            f'<div class="dlg-rule"></div>'
+            f'<div class="dlg-tier {tier_color_class}">'
+            f'  <span class="dlg-tier__num">{lead_data["score"]}</span>'
+            f'  <span class="dlg-tier__lbl">{lead_data["score_label"]}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # ── CTAs: WhatsApp BIG GOLD + tel + email ────────────────────
+        if lead_data["phone"]:
+            wa = lead_data["phone"].replace("+", "").replace(" ", "")
+            phone_disp = lead_data["phone"]
+            st.markdown(
+                f'<div class="dlg-cta">'
+                f'  <a href="https://wa.me/{wa}" target="_blank" '
+                f'     class="dlg-cta__wa">📱  WhatsApp · {phone_disp}</a>'
+                f'  <a href="tel:{lead_data["phone"]}" class="dlg-cta__call">'
+                f'     📞  Ligar</a>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="dlg-cta dlg-cta--empty">Sem contacto telefónico ainda</div>',
+                unsafe_allow_html=True,
+            )
+        if lead_data["email"]:
+            st.markdown(
+                f'<a href="mailto:{lead_data["email"]}" class="dlg-email">'
+                f'  ✉  {lead_data["email"]}</a>',
+                unsafe_allow_html=True,
+            )
+
+    # ── Description (full width) ──────────────────────────────────────
+    if lead_data["description"]:
+        st.markdown(
+            f'<div class="dlg-desc-lbl">DESCRIÇÃO</div>'
+            f'<div class="dlg-desc">{lead_data["description"]}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── CRM stage move buttons ────────────────────────────────────────
+    st.markdown('<div class="dlg-section-lbl">PIPELINE</div>', unsafe_allow_html=True)
+    stage_now = lead_data["crm_stage"]
+    cl1, cl2, cl3, cl4, cl5 = st.columns(5)
+    stages = [("novo", "📥 Novo"), ("contactado", "📞 Contactado"),
+              ("negociacao", "🤝 Negociação"), ("ganho", "✅ Ganho"),
+              ("perdido", "❌ Perdido")]
+    for col, (key, label) in zip([cl1, cl2, cl3, cl4, cl5], stages):
+        with col:
+            is_now = (stage_now == key)
+            if st.button(
+                label, key=f"dlg_stage_{key}_{lead_data['id']}",
+                use_container_width=True,
+                type="primary" if is_now else "secondary",
+                disabled=is_now,
+            ):
+                from crm.manager import CRMManager
+                CRMManager().move_to_stage(lead_data["id"], key)
+                st.cache_data.clear()
+                st.rerun()
+
+    # ── Notes timeline ────────────────────────────────────────────────
+    if notes_data:
+        st.markdown(
+            '<div class="dlg-section-lbl">HISTÓRICO</div>',
+            unsafe_allow_html=True,
+        )
+        notes_html = '<div class="dlg-notes">'
+        for n in notes_data:
+            ts = n["created_at"]
+            ts_str = ts.strftime("%d %b · %H:%M") if ts else "—"
+            notes_html += (
+                f'<div class="dlg-note">'
+                f'  <div class="dlg-note__time">{ts_str}</div>'
+                f'  <div class="dlg-note__body">{n["body"]}</div>'
+                f'</div>'
+            )
+        notes_html += "</div>"
+        st.markdown(notes_html, unsafe_allow_html=True)
+
+    # ── Quick note add ─────────────────────────────────────────────────
+    nk = f"dlg_note_input_{lead_data['id']}"
+    new_note = st.text_input(
+        "Adicionar nota",
+        placeholder="Ex: Ligou, aceita visita sábado às 16h",
+        key=nk,
+        label_visibility="collapsed",
+    )
+    nc1, nc2 = st.columns([5, 1])
+    with nc2:
+        if st.button("💾  Guardar", key=f"dlg_note_save_{lead_data['id']}",
+                     use_container_width=True):
+            if new_note.strip():
+                from crm.manager import CRMManager
+                CRMManager().add_note(lead_data["id"], new_note.strip())
+                st.toast("✓ Nota guardada", icon="💾")
+                st.rerun()
 
 
 def _render_lead_magazine_header(lead) -> None:
@@ -5393,10 +5935,16 @@ if page == "&#128202;  Dashboard":
                 f'</div>',
                 unsafe_allow_html=True,
             )
-            if row.get("crm_stage") == "novo":
-                _, _btn_col = st.columns([4, 2])
-                with _btn_col:
-                    if st.button("📞 Marcar contactado", key=f"mk_{row['id']}", use_container_width=True):
+            # ── Open detail magazine modal ───────────────────────────────
+            _open_col, _mk_col = st.columns([1, 1])
+            with _open_col:
+                if st.button("✦  Abrir detalhe", key=f"dlg_open_{row['id']}",
+                             use_container_width=True):
+                    show_lead_dialog(row["id"])
+            with _mk_col:
+                if row.get("crm_stage") == "novo":
+                    if st.button("📞 Marcar contactado", key=f"mk_{row['id']}",
+                                 use_container_width=True):
                         from crm.manager import CRMManager
                         CRMManager().move_to_stage(row["id"], "contactado")
                         st.cache_data.clear()
