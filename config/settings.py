@@ -47,8 +47,12 @@ class Settings(BaseSettings):
         return [p.strip() for p in self.proxy_list.split(",") if p.strip()]
 
     # ── Scraping ─────────────────────────────────────────────────────────────
-    scrape_delay_min: float = 2.0
-    scrape_delay_max: float = 6.0
+    # Doubled on 2026-05-08 to reduce bot fingerprint and ride out
+    # transient rate-limits without escalating to a hard IP block. With
+    # the lower async-fetcher concurrency (3), per-zone wall-time still
+    # lands inside 5-8 min on a typical Lisboa freguesia.
+    scrape_delay_min: float = 4.0
+    scrape_delay_max: float = 10.0
     max_retries: int = 3
     request_timeout: int = 30
     headless_browser: bool = True

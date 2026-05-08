@@ -188,6 +188,10 @@ class ImovirtualScraper(BaseScraper):
         aggregated set. The Playwright phone-count cap is shared across
         all categories so per-zone overhead stays bounded.
         """
+        # Anti-block warmup — fetch homepage once per run so anti-bot
+        # cookies are set before we hit the search URLs.
+        self._warmup(client, "https://www.imovirtual.com/")
+
         if not SCRAPE_FREGUESIAS and zone.startswith("Lisboa-"):
             log.debug("[imovirtual] zone={z} skipped — SCRAPE_FREGUESIAS=False", z=zone)
             return

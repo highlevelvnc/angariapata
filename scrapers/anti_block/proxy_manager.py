@@ -42,9 +42,9 @@ USER_AGENTS: list[str] = [
 
 # Consistent Accept headers matching the user-agent type
 CHROME_HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
     "Accept-Language": "pt-PT,pt;q=0.9,en-GB;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
     "DNT": "1",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Dest": "document",
@@ -52,7 +52,73 @@ CHROME_HEADERS = {
     "Sec-Fetch-Site": "none",
     "Sec-Fetch-User": "?1",
     "Cache-Control": "max-age=0",
+    "Priority": "u=0, i",
 }
+
+
+# ─── Client Hints (Sec-CH-UA family) ─────────────────────────────────────────
+# Modern Chrome / Edge ship these by default; portals' bot detection
+# (DataDome, Akamai, Cloudflare) compare them against the User-Agent and
+# fingerprint requests that look "headless" by their absence. We synthesise
+# these from the UA string so the trio (UA, platform, brand-version) stays
+# coherent.
+
+import re as _re
+
+def _parse_ua_for_hints(ua: str) -> dict:
+    """Build Sec-CH-UA headers consistent with the User-Agent string.
+
+    Returns a dict with at least the basics ('?0' mobile, full-version brand
+    list when Chrome/Edge, platform and bitness). Falls back to safe values
+    when the UA doesn't match any known browser pattern.
+    """
+    hints: dict[str, str] = {"Sec-CH-UA-Mobile": "?0"}
+
+    # Platform — from UA tokens
+    if "Windows NT 11.0" in ua:
+        platform = '"Windows"'
+        hints["Sec-CH-UA-Platform-Version"] = '"15.0.0"'
+    elif "Windows NT 10.0" in ua:
+        platform = '"Windows"'
+        hints["Sec-CH-UA-Platform-Version"] = '"10.0.0"'
+    elif "Mac OS X 14" in ua or "Macintosh; Intel Mac OS X 14" in ua:
+        platform = '"macOS"'
+        hints["Sec-CH-UA-Platform-Version"] = '"14.4.0"'
+    elif "Mac OS X 13" in ua:
+        platform = '"macOS"'
+        hints["Sec-CH-UA-Platform-Version"] = '"13.6.0"'
+    elif "Mac OS X" in ua or "Macintosh" in ua:
+        platform = '"macOS"'
+    elif "Linux" in ua and "X11" in ua:
+        platform = '"Linux"'
+    else:
+        platform = '"Unknown"'
+    hints["Sec-CH-UA-Platform"] = platform
+    hints["Sec-CH-UA-Bitness"] = '"64"'
+    hints["Sec-CH-UA-Arch"] = '"arm"' if ("arm" in ua.lower() or "Mac" in ua) else '"x86"'
+
+    # Brand-version trio (Chrome family). Skip for Firefox/Safari — those
+    # browsers DO NOT send Sec-CH-UA at all, so its absence is correct
+    # signal for them.
+    chrome_match = _re.search(r"Chrome/(\d+)", ua)
+    edge_match   = _re.search(r"Edg/(\d+)", ua)
+    if edge_match and chrome_match:
+        v = edge_match.group(1)
+        hints["Sec-CH-UA"] = (
+            f'"Chromium";v="{chrome_match.group(1)}", '
+            f'"Microsoft Edge";v="{v}", "Not.A/Brand";v="24"'
+        )
+    elif chrome_match and "Firefox" not in ua and "Safari/605" not in ua:
+        v = chrome_match.group(1)
+        hints["Sec-CH-UA"] = (
+            f'"Chromium";v="{v}", "Google Chrome";v="{v}", "Not.A/Brand";v="24"'
+        )
+        hints["Sec-CH-UA-Full-Version-List"] = (
+            f'"Chromium";v="{v}.0.6367.91", '
+            f'"Google Chrome";v="{v}.0.6367.91", '
+            f'"Not.A/Brand";v="24.0.0.0"'
+        )
+    return hints
 
 
 class ProxyManager:
@@ -93,8 +159,14 @@ class ProxyManager:
         return next(self._ua_cycle)
 
     def get_headers(self, extra: dict = None) -> dict:
-        """Return a complete headers dict with a fresh user-agent."""
-        headers = {**CHROME_HEADERS, "User-Agent": self.get_user_agent()}
+        """Return a complete headers dict with a fresh user-agent and
+        synthesised Client Hints (Sec-CH-UA family) that match the UA.
+        """
+        ua = self.get_user_agent()
+        headers = {**CHROME_HEADERS, "User-Agent": ua}
+        # Append Sec-CH-UA only if the browser actually ships them (Chromium
+        # family). Firefox/Safari requests look more legit *without* these.
+        headers.update(_parse_ua_for_hints(ua))
         if extra:
             headers.update(extra)
         return headers

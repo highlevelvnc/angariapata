@@ -45,8 +45,12 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Sensible cap — going higher invites 429s on every portal we tested
-DEFAULT_CONCURRENCY: int = 6
+# Sensible cap — going higher invites 429s on every portal we tested.
+# Lowered from 6 → 3 on 2026-05-08 after observing aggressive 403 cascades
+# from OLX/Imovirtual once the IP got flagged. Three concurrent in-flight
+# detail fetches with 4-12s base delay between batches mimic a logged-in
+# user browsing tab-by-tab and dramatically reduce the bot fingerprint.
+DEFAULT_CONCURRENCY: int = 3
 
 
 def parallel_fetch(

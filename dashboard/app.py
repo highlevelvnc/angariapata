@@ -247,6 +247,99 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
                                     "en": "Lists ready to deliver to clients, or older CRM contacts to feed the "
                                           "engine. The right format for each case."},
     "page.export.byline":          {"pt": "CSV · JSON · Excel",          "en": "CSV · JSON · Excel"},
+
+    # ── Sidebar filter sections + controls ─────────────────────────────────
+    "sb.search.header":            {"pt": "Pesquisa",                    "en": "Search"},
+    "sb.search.placeholder":       {"pt": "Ex: T2 Lisboa piscina · 'Avenidas Novas'",
+                                    "en": "e.g. T2 Lisbon pool · 'Avenidas Novas'"},
+    "sb.search.help":              {"pt": "Pesquisa rápida (FTS5). Operadores: AND OR NOT NEAR · "
+                                          "Aspas para frase: \"Avenidas Novas\" · Acaba com * para prefix: apartament*",
+                                    "en": "Fast search (FTS5). Operators: AND OR NOT NEAR · "
+                                          "Quote phrases: \"Avenidas Novas\" · End with * for prefix: apartament*"},
+    "sb.bookmarks":                {"pt": "Bookmarks",                    "en": "Bookmarks"},
+    "sb.bookmarks.help":           {"pt": "Carregar pesquisa guardada",   "en": "Load saved search"},
+    "sb.bookmarks.save_as":        {"pt": "Guardar como…",                "en": "Save as…"},
+    "sb.bookmarks.save_btn":       {"pt": "Guardar atual",                "en": "Save current"},
+    "sb.presets.header":           {"pt": "Filtros rápidos",              "en": "Quick filters"},
+    "sb.presets.fsbo_hot":         {"pt": "🔥 FSBO HOT",                  "en": "🔥 FSBO HOT"},
+    "sb.presets.banks":            {"pt": "🏦 Bancos",                    "en": "🏦 Banks"},
+    "sb.presets.auctions":         {"pt": "⚖ Leilões",                    "en": "⚖ Auctions"},
+    "sb.presets.urgent":           {"pt": "⏰ Urgente",                    "en": "⏰ Urgent"},
+    "sb.presets.with_phone":       {"pt": "📞 Com telefone",              "en": "📞 With phone"},
+    "sb.presets.with_email":       {"pt": "✉ Com e-mail",                 "en": "✉ With email"},
+    "sb.presets.sea_view":         {"pt": "🌅 Vista mar",                 "en": "🌅 Sea view"},
+    "sb.presets.clear":            {"pt": "🧹 Limpar",                    "en": "🧹 Clear"},
+    "sb.advanced":                 {"pt": "⚙  Refinamento avançado",      "en": "⚙  Advanced filters"},
+    "sb.advanced.data_origin":     {"pt": "Origem dos dados",             "en": "Data source"},
+    "sb.advanced.contact":         {"pt": "Contacto",                     "en": "Contact"},
+    "sb.advanced.geo_typology":    {"pt": "Geografia & tipologia",        "en": "Geography & typology"},
+    "sb.advanced.exclude_relay":   {"pt": "Excluir relay/OLX (6xx)",      "en": "Exclude relay/OLX (6xx)"},
+    "sb.advanced.exclude_relay.help": {"pt": "Remove números temporários OLX que expiram quando o anúncio sai",
+                                       "en": "Removes temporary OLX numbers that expire when the listing closes"},
+
+    # Data origin / contact / owner / typology select options
+    "opt.all":                     {"pt": "Todos",                        "en": "All"},
+    "opt.real_only":               {"pt": "🟢 Apenas reais",              "en": "🟢 Real only"},
+    "opt.demo_only":               {"pt": "🟡 Apenas demo",               "en": "🟡 Demo only"},
+    "opt.with_phone":              {"pt": "📞 Com telefone",              "en": "📞 With phone"},
+    "opt.mobile_only":             {"pt": "📱 Só telemóvel real",          "en": "📱 Mobile only"},
+    "opt.with_email":              {"pt": "✉ Com email",                  "en": "✉ With email"},
+    "opt.any_contact":             {"pt": "✅ Qualquer contacto",         "en": "✅ Any contact"},
+    "opt.no_contact":              {"pt": "❌ Sem contacto",              "en": "❌ No contact"},
+    "opt.zone.label":              {"pt": "Zona",                         "en": "Zone"},
+    "opt.zone.all":                {"pt": "Todas as zonas",               "en": "All zones"},
+    "opt.typology.label":          {"pt": "Tipologia",                    "en": "Typology"},
+    "opt.typology.all":            {"pt": "Todas as tipologias",          "en": "All typologies"},
+    "opt.owner.label":             {"pt": "Tipo vendedor",                "en": "Seller type"},
+    "opt.owner.fsbo":              {"pt": "👤 Particular (FSBO)",         "en": "👤 Owner direct (FSBO)"},
+    "opt.owner.agency":            {"pt": "🏢 Agência",                   "en": "🏢 Agency"},
+    "opt.owner.developer":         {"pt": "🏗 Promotor",                   "en": "🏗 Developer"},
+    "opt.owner.unknown":           {"pt": "❓ Desconhecido",               "en": "❓ Unknown"},
+    "opt.lead_type.label":         {"pt": "Tipo de lead",                 "en": "Lead type"},
+    "opt.lead_type.fsbo":          {"pt": "🏠 FSBO (venda)",              "en": "🏠 FSBO (sale)"},
+    "opt.lead_type.frbo":          {"pt": "🔑 FRBO (arrendamento)",       "en": "🔑 FRBO (rental)"},
+    "opt.lead_type.active":        {"pt": "👥 Active Owner",              "en": "👥 Active Owner"},
+    "opt.lead_type.agency":        {"pt": "🏢 Agência",                   "en": "🏢 Agency"},
+    "opt.lead_type.dev":           {"pt": "🚧 Promotor",                  "en": "🚧 Developer"},
+    "opt.csource.label":           {"pt": "Origem do contacto",           "en": "Contact source"},
+    "opt.csource.direct":          {"pt": "Direto",                       "en": "Direct"},
+    "opt.csource.agency_site":     {"pt": "Agência / Site",               "en": "Agency / Website"},
+    "opt.csource.cross":           {"pt": "Cross-portal",                 "en": "Cross-portal"},
+    "opt.score_min":               {"pt": "Pontuação mínima",             "en": "Minimum score"},
+    "sb.refresh_btn":              {"pt": "Actualizar oportunidades",     "en": "Refresh opportunities"},
+    "sb.market_run_btn":           {"pt": "Executar análise de mercado",  "en": "Run market analysis"},
+
+    # ── KPI metric labels (Dashboard) ─────────────────────────────────────
+    "kpi.hot":                     {"pt": "🔴 HOT",                       "en": "🔴 HOT"},
+    "kpi.hot.help":                {"pt": "Score >= 75",                  "en": "Score >= 75"},
+    "kpi.hot.delta":               {"pt": "+{n} hoje",                    "en": "+{n} today"},
+    "kpi.warm":                    {"pt": "🟡 WARM",                      "en": "🟡 WARM"},
+    "kpi.warm.help":               {"pt": "Score 50-74",                  "en": "Score 50-74"},
+    "kpi.today":                   {"pt": "📥 Hoje",                      "en": "📥 Today"},
+    "kpi.today.help":              {"pt": "Últimas 24h",                  "en": "Last 24h"},
+    "kpi.in_negotiation":          {"pt": "🔄 Em negociação",             "en": "🔄 In negotiation"},
+    "kpi.in_negotiation.help":     {"pt": "Leads activos no funil",       "en": "Active leads in funnel"},
+    "kpi.avg_score":               {"pt": "⭐ Score médio",                "en": "⭐ Avg. score"},
+    "kpi.avg_score.help":          {"pt": "Média das oportunidades activas",
+                                    "en": "Average of active opportunities"},
+    "kpi.with_phone":              {"pt": "📞 Com telefone",              "en": "📞 With phone"},
+    "kpi.with_phone.help":         {"pt": "Leads com número de telefone — contacto directo imediato (+15 pts)",
+                                    "en": "Leads with phone number — immediate direct contact (+15 pts)"},
+    "kpi.with_email":              {"pt": "✉️ Com email",                  "en": "✉️ With email"},
+    "kpi.with_email.help":         {"pt": "Leads com email disponível (+5 pts)",
+                                    "en": "Leads with email available (+5 pts)"},
+    "kpi.no_contact":              {"pt": "🚫 Sem contacto",              "en": "🚫 No contact"},
+    "kpi.no_contact.help":         {"pt": "Leads sem qualquer contacto — penalização -15 pts no score",
+                                    "en": "Leads with no contact — -15 pts score penalty"},
+
+    # ── Section labels (lbl-section across pages) ─────────────────────────
+    "lbl.priority_opps":           {"pt": "Oportunidades prioritárias",   "en": "Priority opportunities"},
+    "lbl.trend_30d":               {"pt": "Tendência (últimos 30 dias)",  "en": "Trend (last 30 days)"},
+    "lbl.score_distribution":     {"pt": "Distribuição de pontuações",    "en": "Score distribution"},
+    "lbl.opps_by_zone":            {"pt": "Oportunidades por zona",       "en": "Opportunities by zone"},
+    "lbl.compa rables":            {"pt": "Comparáveis",                  "en": "Comparables"},
+    "lbl.pipeline_flow":           {"pt": "Fluxo de análise automática",  "en": "Automated analysis flow"},
+    "lbl.opps_map":                {"pt": "Mapa de oportunidades",        "en": "Opportunities map"},
 }
 
 
@@ -4159,18 +4252,14 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
-    st.markdown('<div class="lbl-section">Pesquisa</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="lbl-section">{t("sb.search.header")}</div>', unsafe_allow_html=True)
     fts_query = st.text_input(
-        "Pesquisa instantânea",
-        placeholder="Ex: T2 Lisboa piscina · 'Avenidas Novas'",
+        t("sb.search.header"),
+        placeholder=t("sb.search.placeholder"),
         label_visibility="collapsed",
         key="fts_query_input",
         value=st.session_state.get("__fts_query_preset", ""),
-        help=(
-            "Pesquisa rápida (FTS5). Operadores: AND OR NOT NEAR · "
-            'Aspas para frase: "Avenidas Novas" · '
-            "Acaba com * para prefix: apartament*"
-        ),
+        help=t("sb.search.help"),
     )
 
     # Saved searches dropdown — load + delete
@@ -4186,9 +4275,9 @@ with st.sidebar:
     if searches:
         names = ["—"] + [f"{s['name']}" for s in searches]
         chosen = st.selectbox(
-            "Bookmarks", names,
+            t("sb.bookmarks"), names,
             label_visibility="collapsed",
-            help="Carregar pesquisa guardada",
+            help=t("sb.bookmarks.help"),
             key="saved_search_pick",
         )
         if chosen and chosen != "—":
@@ -4203,11 +4292,12 @@ with st.sidebar:
     sscol1, sscol2 = st.columns([3, 1])
     with sscol1:
         new_name = st.text_input(
-            "Guardar como…", placeholder="Nome da pesquisa",
+            t("sb.bookmarks.save_as"),
+            placeholder=t("sb.bookmarks.save_as"),
             label_visibility="collapsed", key="ss_new_name",
         )
     with sscol2:
-        if st.button("💾", help="Guardar atual", use_container_width=True, key="ss_save_btn"):
+        if st.button("💾", help=t("sb.bookmarks.save_btn"), use_container_width=True, key="ss_save_btn"):
             if new_name and fts_query:
                 try:
                     _ss_save(new_name, fts_query, {})
@@ -4217,20 +4307,20 @@ with st.sidebar:
                     st.error(f"Falhou: {e}")
 
     st.divider()
-    st.markdown('<div class="lbl-section">Filtros rápidos</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="lbl-section">{t("sb.presets.header")}</div>', unsafe_allow_html=True)
     # ─── Smart filter presets ───────────────────────────────────────────
     # Each preset writes a deterministic set of session_state keys that
     # the standard filter widgets pick up on rerun. Click → all filters
     # snap to the preset, no manual selection needed.
     PRESETS: list[tuple[str, dict]] = [
-        ("🔥 FSBO HOT",       {"score_floor": 60,  "owner": "&#128100; Particular (FSBO)", "fts": ""}),
-        ("🏦 Bancos",         {"score_floor": 0,   "fts": "banco OR caixa OR millennium OR santander OR novobanco"}),
-        ("⚖ Leilões",         {"score_floor": 0,   "fts": "leil*"}),
-        ("⏰ Urgente",         {"score_floor": 50,  "fts": "urgente OR negociavel OR aceitamos"}),
-        ("📞 Com telefone",    {"contact": "&#128222; Com telefone", "score_floor": 50}),
-        ("✉ Com e-mail",      {"contact": "&#9993; Com email",      "score_floor": 50}),
-        ("🌅 Vista mar",      {"fts": '"vista mar" OR "vista para o mar"'}),
-        ("🧹 Limpar",         {"clear": True}),
+        (t("sb.presets.fsbo_hot"),    {"score_floor": 60,  "owner": "&#128100; Particular (FSBO)", "fts": ""}),
+        (t("sb.presets.banks"),       {"score_floor": 0,   "fts": "banco OR caixa OR millennium OR santander OR novobanco"}),
+        (t("sb.presets.auctions"),    {"score_floor": 0,   "fts": "leil*"}),
+        (t("sb.presets.urgent"),      {"score_floor": 50,  "fts": "urgente OR negociavel OR aceitamos"}),
+        (t("sb.presets.with_phone"),  {"contact": "&#128222; Com telefone", "score_floor": 50}),
+        (t("sb.presets.with_email"),  {"contact": "&#9993; Com email",      "score_floor": 50}),
+        (t("sb.presets.sea_view"),    {"fts": '"vista mar" OR "vista para o mar"'}),
+        (t("sb.presets.clear"),       {"clear": True}),
     ]
 
     def _apply_preset(p: dict) -> None:
@@ -4259,39 +4349,81 @@ with st.sidebar:
                 st.rerun()
 
     st.divider()
-    with st.expander("⚙  Refinamento avançado", expanded=False):
-        st.markdown('<div class="lbl-section" style="margin-top:0;">Origem dos dados</div>', unsafe_allow_html=True)
+    with st.expander(t("sb.advanced"), expanded=False):
+        st.markdown(f'<div class="lbl-section" style="margin-top:0;">{t("sb.advanced.data_origin")}</div>', unsafe_allow_html=True)
+        # Canonical PT identifiers used by downstream filters; format_func translates display only.
         _DATA_MODES = ["Todos", "&#128994; Apenas reais", "&#128993; Apenas demo"]
-        data_mode = st.radio("data_mode", _DATA_MODES, label_visibility="collapsed")
+        _DATA_LABEL = {"Todos": "opt.all", "&#128994; Apenas reais": "opt.real_only", "&#128993; Apenas demo": "opt.demo_only"}
+        data_mode = st.radio("data_mode", _DATA_MODES, label_visibility="collapsed",
+                             format_func=lambda v: t(_DATA_LABEL.get(v, "opt.all")))
 
-        st.markdown('<div class="lbl-section">Contacto</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="lbl-section">{t("sb.advanced.contact")}</div>', unsafe_allow_html=True)
         _CONTACT_MODES = ["Todos", "&#128222; Com telefone", "&#128241; Só telemóvel real", "&#9993; Com email", "&#9989; Qualquer contacto", "&#10060; Sem contacto"]
-        contact_mode = st.radio("contact_mode", _CONTACT_MODES, label_visibility="collapsed")
-        exclude_relay = st.checkbox("Excluir relay/OLX (6xx)", value=False, help="Remove números temporários OLX que expiram quando o anúncio sai")
+        _CONTACT_LABEL = {
+            "Todos": "opt.all",
+            "&#128222; Com telefone": "opt.with_phone",
+            "&#128241; Só telemóvel real": "opt.mobile_only",
+            "&#9993; Com email": "opt.with_email",
+            "&#9989; Qualquer contacto": "opt.any_contact",
+            "&#10060; Sem contacto": "opt.no_contact",
+        }
+        contact_mode = st.radio("contact_mode", _CONTACT_MODES, label_visibility="collapsed",
+                                format_func=lambda v: t(_CONTACT_LABEL.get(v, "opt.all")))
+        exclude_relay = st.checkbox(t("sb.advanced.exclude_relay"), value=False,
+                                    help=t("sb.advanced.exclude_relay.help"))
 
-        st.markdown('<div class="lbl-section">Geografia & tipologia</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="lbl-section">{t("sb.advanced.geo_typology")}</div>', unsafe_allow_html=True)
         ZONES = ["Todas as zonas", "Lisboa", "Cascais", "Sintra", "Almada", "Seixal", "Sesimbra"]
-        sel_zone = st.selectbox("Zona", ZONES)
+        _ZONE_LABEL = {"Todas as zonas": "opt.zone.all"}  # zone names stay literal
+        sel_zone = st.selectbox(t("opt.zone.label"), ZONES,
+                                format_func=lambda v: t(_ZONE_LABEL[v]) if v in _ZONE_LABEL else v)
         TYPOS = ["Todas as tipologias", "T0", "T1", "T2", "T3", "T4+", "Moradia"]
-        sel_typology = st.selectbox("Tipologia", TYPOS)
+        _TYPO_LABEL = {"Todas as tipologias": "opt.typology.all"}
+        _typo_extra = {"Moradia": {"pt": "Moradia", "en": "House"}}
+        sel_typology = st.selectbox(
+            t("opt.typology.label"), TYPOS,
+            format_func=lambda v: (t(_TYPO_LABEL[v]) if v in _TYPO_LABEL
+                                   else (_typo_extra[v].get(st.session_state.get("__lang", "pt"), v)
+                                         if v in _typo_extra else v)),
+        )
         _OWNER_MODES = ["Todos", "&#128100; Particular (FSBO)", "&#127970; Agência", "&#127959; Promotor", "&#10067; Desconhecido"]
+        _OWNER_LABEL = {
+            "Todos": "opt.all",
+            "&#128100; Particular (FSBO)": "opt.owner.fsbo",
+            "&#127970; Agência": "opt.owner.agency",
+            "&#127959; Promotor": "opt.owner.developer",
+            "&#10067; Desconhecido": "opt.owner.unknown",
+        }
         _owner_default = _OWNER_MODES.index(st.session_state.get("__preset_owner", "Todos")) \
             if st.session_state.get("__preset_owner") in _OWNER_MODES else 0
-        owner_mode = st.selectbox("Tipo vendedor", _OWNER_MODES, index=_owner_default)
+        owner_mode = st.selectbox(t("opt.owner.label"), _OWNER_MODES, index=_owner_default,
+                                  format_func=lambda v: t(_OWNER_LABEL.get(v, "opt.all")))
         _LEAD_TYPE_MODES = ["Todos", "&#127968; FSBO (venda)", "&#128273; FRBO (arrendamento)", "&#128101; Active Owner", "&#127970; Agência", "&#128679; Promotor"]
-        lead_type_mode = st.selectbox("Tipo de lead", _LEAD_TYPE_MODES)
+        _LEAD_TYPE_LABEL = {
+            "Todos": "opt.all",
+            "&#127968; FSBO (venda)": "opt.lead_type.fsbo",
+            "&#128273; FRBO (arrendamento)": "opt.lead_type.frbo",
+            "&#128101; Active Owner": "opt.lead_type.active",
+            "&#127970; Agência": "opt.lead_type.agency",
+            "&#128679; Promotor": "opt.lead_type.dev",
+        }
+        lead_type_mode = st.selectbox(t("opt.lead_type.label"), _LEAD_TYPE_MODES,
+                                      format_func=lambda v: t(_LEAD_TYPE_LABEL.get(v, "opt.all")))
         _CSOURCE_MODES = ["Todos", "Direto", "Agência / Site", "Cross-portal"]
-        csource_mode = st.selectbox("Origem do contacto", _CSOURCE_MODES)
+        _CSOURCE_LABEL = {"Todos": "opt.all", "Direto": "opt.csource.direct",
+                          "Agência / Site": "opt.csource.agency_site", "Cross-portal": "opt.csource.cross"}
+        csource_mode = st.selectbox(t("opt.csource.label"), _CSOURCE_MODES,
+                                    format_func=lambda v: t(_CSOURCE_LABEL.get(v, "opt.all")))
         score_floor = st.slider(
-            "Pontuação mínima", 0, 100,
+            t("opt.score_min"), 0, 100,
             st.session_state.get("__preset_score", 0),
         )
     st.divider()
-    if st.button("Actualizar oportunidades", use_container_width=True):
+    if st.button(t("sb.refresh_btn"), use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-    if st.button("Executar analise de mercado", use_container_width=True):
-        with st.spinner("A analisar o mercado..."):
+    if st.button(t("sb.market_run_btn"), use_container_width=True):
+        with st.spinner(t("qa.update.spinner")):
             try:
                 from pipeline.runner import PipelineRunner
                 from scoring.scorer import Scorer
@@ -4522,19 +4654,19 @@ if page == "&#128202;  Dashboard":
 
     # KPI metrics
     k1, k2, k3, k4, k5 = st.columns(5)
-    with k1: st.metric("🔴 HOT",         hot_n,  delta=f"+{stats.get('hot_today',0)} hoje",  help="Score >= 75")
-    with k2: st.metric("🟡 WARM",        warm_n,                                              help="Score 50-74")
-    with k3: st.metric("📥 Hoje",        stats.get("added_today", 0),                         help="Ultimas 24h")
+    with k1: st.metric(t("kpi.hot"),  hot_n,  delta=t("kpi.hot.delta", n=stats.get('hot_today', 0)),  help=t("kpi.hot.help"))
+    with k2: st.metric(t("kpi.warm"), warm_n, help=t("kpi.warm.help"))
+    with k3: st.metric(t("kpi.today"), stats.get("added_today", 0), help=t("kpi.today.help"))
     with k4:
         act = sum(v for k, v in stats.get("by_stage", {}).items() if k not in ("ganho", "perdido", "arquivado"))
-        st.metric("🔄 Em Negociacao",   act,                                                  help="Leads activos no funil")
-    with k5: st.metric("⭐ Score Medio", avg_s,                                               help="Media das oportunidades activas")
+        st.metric(t("kpi.in_negotiation"), act, help=t("kpi.in_negotiation.help"))
+    with k5: st.metric(t("kpi.avg_score"), avg_s, help=t("kpi.avg_score.help"))
 
     # ── Contact availability row ───────────────────────────────────────────────
     ck1, ck2, ck3 = st.columns(3)
-    with ck1: st.metric("📞 Com Telefone", stats.get("with_phone_count", 0), help="Leads com numero de telefone — contacto directo imediato (+15 pts)")
-    with ck2: st.metric("✉️ Com Email",    stats.get("with_email_count", 0), help="Leads com email disponivel (+5 pts)")
-    with ck3: st.metric("🚫 Sem Contacto", stats.get("no_contact_count", 0), help="Leads sem qualquer contacto — penalizacao -15 pts no score")
+    with ck1: st.metric(t("kpi.with_phone"), stats.get("with_phone_count", 0), help=t("kpi.with_phone.help"))
+    with ck2: st.metric(t("kpi.with_email"), stats.get("with_email_count", 0), help=t("kpi.with_email.help"))
+    with ck3: st.metric(t("kpi.no_contact"), stats.get("no_contact_count", 0), help=t("kpi.no_contact.help"))
 
     # ── Contact confidence tier breakdown (from loaded leads, respects active filters) ──
     n_conf_high = sum(1 for l in leads if (l.get("contact_confidence") or 0) >= 70)

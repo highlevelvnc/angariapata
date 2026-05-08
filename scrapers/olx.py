@@ -237,6 +237,10 @@ class OLXScraper(BaseScraper):
         parent Lisboa query and skipped here — OLX has no freguesia-level
         URL paths, so drilling down would only duplicate requests.
         """
+        # Anti-block warmup — fetch the portal homepage once per run so the
+        # site drops its anti-bot cookie before we start hitting search URLs.
+        self._warmup(client, f"{BASE_URL}/imoveis/")
+
         if zone.startswith("Lisboa-"):
             log.debug(
                 "[olx] zone={z} is a Lisboa freguesia — skipping (already covered by Lisboa)",

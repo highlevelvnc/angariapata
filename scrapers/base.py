@@ -480,13 +480,47 @@ class BaseScraper(ABC):
     # ── HTTP client ───────────────────────────────────────────────────────────
 
     def _build_client(self, follow_redirects: bool = True) -> httpx.Client:
-        """Build a fresh httpx client with anti-block headers and optional proxy."""
+        """Build a fresh httpx client with anti-block headers and optional proxy.
+
+        Cookies persist for the lifetime of the client (httpx default), so
+        every request inside the same session shares the cookie jar — that
+        matters for portals that drop a "first-visit" cookie on the
+        homepage and validate it on subsequent searches.
+        """
         kwargs = self.proxy_manager.get_httpx_kwargs()
         return httpx.Client(
             timeout=settings.request_timeout,
             follow_redirects=follow_redirects,
+            http2=False,                # OLX/Imovirtual misbehave on h2 occasionally
             **kwargs,
         )
+
+    def _warmup(self, client: httpx.Client, homepage_url: str) -> bool:
+        """Visit the portal's homepage before any zone search — gives the
+        site a chance to drop its anti-bot cookie and the rate limiter a
+        baseline timestamp. Idempotent: tracks per-host completion so it
+        only fires once per scrape run.
+
+        Returns True on 200, False otherwise (we still proceed, but log it).
+        """
+        if not hasattr(self, "_warmed_hosts"):
+            self._warmed_hosts: set[str] = set()
+        from urllib.parse import urlparse
+        host = urlparse(homepage_url).netloc
+        if host in self._warmed_hosts:
+            return True
+        try:
+            r = client.get(homepage_url)
+            ok = (r.status_code == 200)
+            log.info(
+                "[{src}] warmup {host} → HTTP {code} ({sz} KB)",
+                src=self.SOURCE, host=host, code=r.status_code, sz=len(r.content) // 1024,
+            )
+            self._warmed_hosts.add(host)
+            return ok
+        except Exception as exc:
+            log.warning("[{src}] warmup {host} failed: {e}", src=self.SOURCE, host=host, e=exc)
+            return False
 
     def _get(self, client: httpx.Client, url: str, params: dict = None) -> Optional[httpx.Response]:
         """
