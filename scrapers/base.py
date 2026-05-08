@@ -628,14 +628,17 @@ class BaseScraper(ABC):
                 if resp.status_code == 200:
                     self.rate_limiter.record_success()
                     self._record_visited(url)
+                    self._record_persona_outcome(ok=True)
                     return resp
                 if resp.status_code == 429:
                     log.warning("[{src}] 429 Too Many Requests — backoff", src=self.SOURCE)
                     self.rate_limiter.backoff(attempt)
+                    self._record_persona_outcome(ok=False)
                     continue
                 if resp.status_code in (403, 401):
                     log.warning("[{src}] {code} on {url}", src=self.SOURCE, code=resp.status_code, url=url)
                     self.rate_limiter.backoff(attempt)
+                    self._record_persona_outcome(ok=False)
                     # Rotate user-agent for next attempt
                     client.headers["User-Agent"] = self.proxy_manager.get_user_agent()
                     continue
@@ -646,6 +649,19 @@ class BaseScraper(ABC):
                 log.warning("[{src}] Request error attempt {a}: {e}", src=self.SOURCE, a=attempt + 1, e=e)
                 self.rate_limiter.backoff(attempt)
         return None
+
+    def _record_persona_outcome(self, ok: bool) -> None:
+        """Update health stats for the current (host, persona) pair so
+        future picks can avoid recently-flagged identities."""
+        host = self.PERSONA_HOST or self.SOURCE
+        persona = getattr(self, "_current_persona", None)
+        if persona is None:
+            return
+        try:
+            from scrapers.anti_block.persona_health import record_outcome
+            record_outcome(host, persona.name, ok=ok)
+        except Exception:
+            pass
 
     # ── Public interface ──────────────────────────────────────────────────────
 

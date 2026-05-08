@@ -391,6 +391,14 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "run.preflight.force":        {"pt": "Forçar mesmo assim",            "en": "Force launch anyway"},
     "run.diff.new":               {"pt": "🟢 {n} leads novos hoje",       "en": "🟢 {n} new leads today"},
     "run.diff.zero":              {"pt": "Sem leads novos.",              "en": "No new leads."},
+
+    # ── Persona health widget ──────────────────────────────────────────────
+    "ph.header":                  {"pt": "Saúde das personas",            "en": "Persona health"},
+    "ph.empty":                   {"pt": "Sem dados ainda — corre o motor para começar a registar.",
+                                    "en": "No data yet — run the engine to start tracking."},
+    "ph.cooldown":                {"pt": "Em cooldown {m} min",           "en": "Cooldown {m} min"},
+    "ph.win_rate":                {"pt": "{pct}%",                        "en": "{pct}%"},
+    "ph.reset":                   {"pt": "Reset stats",                   "en": "Reset stats"},
 }
 
 
@@ -2375,6 +2383,65 @@ html { scroll-behavior: smooth; }
     line-height: 1.45;
     color: var(--fog);
     padding-left: 4px;
+}
+
+/* ──── Persona health rows ─────────────────────────────────────────────── */
+.ph-host {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 320;
+    font-size: 12px;
+    color: var(--mint-l);
+    margin: 8px 0 4px;
+    letter-spacing: .01em;
+}
+.ph-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 8px;
+    margin: 1px 0;
+    border-radius: 6px;
+    border-left: 2px solid transparent;
+    font-family: var(--font-body);
+    font-size: 10.5px;
+}
+.ph-row--ok    { background: rgba(86,175,116,.08);  border-left-color: #56af74; }
+.ph-row--warn  { background: rgba(251,191,36,.08);  border-left-color: var(--amber); }
+.ph-row--bad   { background: rgba(251,113,133,.10); border-left-color: var(--rose); }
+.ph-row--cool  { background: rgba(168,156,128,.08); border-left-color: var(--smoke); opacity: .7; }
+.ph-row__name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ice);
+    letter-spacing: .02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ph-row__rate {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-variation-settings: "opsz" 18;
+    font-weight: 460;
+    font-size: 13px;
+    color: var(--ice);
+    font-feature-settings: "lnum","tnum";
+    min-width: 32px;
+    text-align: right;
+}
+.ph-row--ok   .ph-row__rate { color: #86d4a8; }
+.ph-row--warn .ph-row__rate { color: var(--amber); }
+.ph-row--bad  .ph-row__rate { color: var(--rose); }
+.ph-row--cool .ph-row__rate { color: var(--smoke); }
+.ph-row__sub {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--slate);
+    white-space: nowrap;
 }
 
 /* ──── Live run-progress strip ─────────────────────────────────────────── */
@@ -4606,6 +4673,61 @@ with st.sidebar:
             except Exception:
                 pass
             st.rerun()
+
+    # ── Persona health expander ─────────────────────────────────────────────
+    # Shows win-rate per (host, persona) so the operator can see which
+    # identities are passing through and which are sleeping in cooldown.
+    try:
+        from scrapers.anti_block.persona_health import all_entries, reset_all
+        _ph_entries = all_entries()
+    except Exception:
+        _ph_entries = {}
+    with st.expander(t("ph.header"), expanded=False):
+        if not _ph_entries:
+            st.caption(t("ph.empty"))
+        else:
+            # Aggregate: group by host, show top 5 personas sorted by total req
+            by_host: dict[str, list[tuple[str, dict]]] = {}
+            for k, e in _ph_entries.items():
+                if "::" not in k:
+                    continue
+                h, p = k.split("::", 1)
+                by_host.setdefault(h, []).append((p, e))
+            for host, rows in sorted(by_host.items()):
+                rows.sort(key=lambda r: -(r[1]["ok"] + r[1]["blocked"]))
+                st.markdown(
+                    f'<div class="ph-host">{host}</div>',
+                    unsafe_allow_html=True,
+                )
+                for persona_name, e in rows[:5]:
+                    total = e["ok"] + e["blocked"]
+                    win = (e["ok"] / total * 100) if total else 0
+                    cool = max(0, e["cooldown_until"] - time.time())
+                    klass = (
+                        "ph-row ph-row--cool" if cool > 0
+                        else "ph-row ph-row--ok" if win >= 70
+                        else "ph-row ph-row--warn" if win >= 40
+                        else "ph-row ph-row--bad"
+                    )
+                    if cool > 0:
+                        sub = t("ph.cooldown", m=int(cool // 60))
+                    else:
+                        sub = f"{e['ok']} ok · {e['blocked']} bl"
+                    st.markdown(
+                        f'<div class="{klass}">'
+                        f'  <span class="ph-row__name">{persona_name}</span>'
+                        f'  <span class="ph-row__rate">{int(win)}%</span>'
+                        f'  <span class="ph-row__sub">{sub}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+        if st.button(t("ph.reset"), key="ph_reset_btn", use_container_width=True):
+            try:
+                reset_all()
+                st.toast("✓  reset", icon="🧹")
+                st.rerun()
+            except Exception as e:
+                st.error(f"reset failed: {e}")
 
     # ── Navigation: grouped by purpose, not flat (i18n-aware) ─────────────
     # Each item carries a stable page_id (used by the if/elif chain) and

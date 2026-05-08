@@ -214,12 +214,30 @@ def _pool_for(host: str, size: int = 3) -> list[Persona]:
 
 
 def pick_persona(host: str, *, sticky_index: int = 0) -> Persona:
-    """Return the persona at index ``sticky_index`` from the per-host pool.
-    Callers rotate ``sticky_index`` every N zones for within-pool variety
-    while keeping the 3-persona set itself stable across runs."""
+    """Return a persona from the per-host pool, biased by recorded
+    health. Falls back to round-robin on the pool when no health
+    history exists or every candidate is in cooldown.
+
+    The 3-persona pool itself stays stable across the week (Phase 12);
+    this function only changes WHICH of the 3 we use right now.
+    """
     pool = _pool_for(host)
     if not pool:
         return PERSONAS[0]
+
+    # Try health-aware pick first.
+    try:
+        from scrapers.anti_block.persona_health import pick_weighted
+        names = [p.name for p in pool]
+        chosen = pick_weighted(host, names, sticky_index=sticky_index)
+        if chosen:
+            for p in pool:
+                if p.name == chosen:
+                    return p
+    except Exception:
+        pass
+
+    # Fallback — round-robin within the pool.
     return pool[sticky_index % len(pool)]
 
 
