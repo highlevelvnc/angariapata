@@ -42,6 +42,10 @@ def flag_flippers(min_occurrences: int = 4) -> dict:
     Find phones that appear in ``min_occurrences`` or more leads, and
     downgrade those leads to ``agency`` regardless of their original
     classification. Real FSBO sellers don't list 4+ properties.
+
+    Applies to ALL phone types (mobile + landline + relay) — landline
+    switchboards in 100+ listings are obvious agency phones that pose
+    same fake-FSBO risk as mobile flippers.
     """
     stats = {"phones_checked": 0, "flippers_found": 0, "leads_downgraded": 0}
 

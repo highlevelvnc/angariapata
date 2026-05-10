@@ -71,6 +71,61 @@ _PHONE_LABELS = {
 }
 
 
+# ── Owner Tier classification ──────────────────────────────────────────────────
+
+def _phone_uses_count(phone: str) -> int:
+    """Return how many other leads share this phone (cheap-cached probe)."""
+    if not phone or not hasattr(_phone_uses_count, "_cache"):
+        _phone_uses_count._cache = {}    # type: ignore
+    cache = _phone_uses_count._cache    # type: ignore
+    if phone in cache:
+        return cache[phone]
+    with get_db() as db:
+        from sqlalchemy import func
+        n = (
+            db.query(func.count(Lead.id))
+            .filter(Lead.contact_phone == phone, Lead.archived == False)
+            .scalar() or 0
+        )
+    cache[phone] = n
+    return n
+
+
+def _classify_owner_tier(lead: Lead) -> str:
+    """
+    Classify how confident we are that this phone is THE OWNER.
+
+      ✅ A · mobile + FSBO + único + nome    → quase certeza dono
+      🟢 B · mobile + FSBO + 1-2 usos        → provável dono
+      🟡 C · mobile com agency_name          → intermediário comercial
+      🟡 D · landline + FSBO sem agency_name → casa do dono ou senhorio (50/50)
+      ❌ E · landline com agency_name OU 4+ usos → switchboard agência
+      ⚠ ?  · qualquer outro caso
+    """
+    pt   = (lead.phone_type or "").lower()
+    is_o = bool(lead.is_owner)
+    ag   = (lead.agency_name or "").strip()
+    nm   = (lead.contact_name or "").strip()
+    ot   = (lead.owner_type or "").lower()
+    n_uses = _phone_uses_count(lead.contact_phone or "")
+
+    # Hard reject: landline in 4+ listings is switchboard
+    if pt == "landline" and n_uses >= 4:
+        return "E"
+
+    if pt == "mobile" and is_o and ot == "fsbo" and not ag and n_uses == 1 and nm and len(nm) >= 3:
+        return "A"
+    if pt == "mobile" and is_o and ot == "fsbo" and not ag and n_uses <= 2:
+        return "B"
+    if pt == "mobile" and ag:
+        return "C"
+    if pt == "landline" and not ag and n_uses <= 2:
+        return "D"
+    if pt == "landline" and (ag or n_uses >= 3):
+        return "E"
+    return "?"
+
+
 # ── Personalised WhatsApp message ──────────────────────────────────────────────
 def _first_name(name: str | None) -> str:
     if not name:
@@ -358,10 +413,14 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
     except Exception:
         owner_summary = "—"
 
+    # Sprint Owner Tier · classify how confident we are this is the actual owner
+    owner_tier = _classify_owner_tier(lead)
+
     row = {
         "rank":          rank,
         "score":         lead.score or 0,
         "label":         lead.score_label or "COLD",
+        "owner_tier":    owner_tier,
         "badges":        " · ".join(badges) if badges else "—",
         "owner_profile": owner_summary,
         "nome":          lead.contact_name or "—",
@@ -462,6 +521,9 @@ def generate_premium_list(
             continue
         if _is_likely_agency(lead):
             continue
+        # Sprint Owner Tier · exclude tier E (switchboard agency confirmed)
+        if _classify_owner_tier(lead) == "E":
+            continue
         # Filter active_owner + landline — weak signal
         if lead.lead_type == "active_owner" and (
             getattr(lead, "phone_type", None) == "landline"
@@ -538,8 +600,9 @@ def generate_expanded_list(
             continue
         if _is_excluded_landline(lead):
             continue
-        # _is_likely_agency check removed in Expandida (Sprint relax) — agencies
-        # marked with badges visually instead of excluded
+        # Sprint Owner Tier · exclude tier E (switchboard agency confirmed)
+        if _classify_owner_tier(lead) == "E":
+            continue
 
         seen_phones.add(phone)
         row = _lead_to_row(lead, rank=len(rows) + 1)
@@ -814,6 +877,7 @@ def export_commercial_xlsx(
         ("#",            "rank",          4),
         ("Score",        "score",         7),
         ("Label",        "label",         8),
+        ("Tier",         "owner_tier",    6),
         ("Sinais",       "badges",       30),
         ("Perfil Vendedor","owner_profile",30),
         ("Nome",         "nome",         22),
