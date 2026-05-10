@@ -297,6 +297,46 @@ SCRAPE_ALL_CATEGORIES: bool = True
 import os as _os
 FSBO_ONLY: bool = _os.getenv("IDEALISTA_FSBO_ONLY", "1") == "1"
 
+# ── ScrapingBee adapter ──────────────────────────────────────────────
+# When SCRAPINGBEE_API_KEY is set, route requests through their managed
+# DataDome bypass service (~95-98% success rate · $29/mês "Hobby" tier).
+# Without the key, fall through to direct Playwright (will mostly fail
+# from residential PT IPs due to DataDome).
+SCRAPINGBEE_KEY: str  = _os.getenv("SCRAPINGBEE_API_KEY", "")
+SCRAPINGBEE_BASE: str = "https://app.scrapingbee.com/api/v1/"
+
+
+def _via_scrapingbee(url: str) -> tuple[int, str]:
+    """
+    Fetch a URL via ScrapingBee. Returns (status_code, html).
+    Returns (-1, '') if not configured or on hard error.
+
+    Cost per call: ~5 ScrapingBee credits (premium proxy + JS rendering).
+    150k credits/$29 plan supports ~30 000 calls/mês — far above
+    Pata Brava daily volume.
+    """
+    if not SCRAPINGBEE_KEY:
+        return -1, ""
+    try:
+        r = httpx.get(
+            SCRAPINGBEE_BASE,
+            params={
+                "api_key":           SCRAPINGBEE_KEY,
+                "url":               url,
+                "render_js":         "true",
+                "premium_proxy":     "true",
+                "country_code":      "pt",
+                "wait_browser":      "domcontentloaded",
+                "block_ads":         "true",
+                "block_resources":   "false",  # need CSS/img for stealth
+            },
+            timeout=60.0,
+        )
+        return r.status_code, r.text
+    except Exception as e:
+        log.warning("[idealista] ScrapingBee call failed: {e}", e=e)
+        return -1, ""
+
 
 class IdealistaScraper(BaseScraper):
     SOURCE = "idealista"
@@ -357,6 +397,32 @@ class IdealistaScraper(BaseScraper):
 
         for label, zone_url in urls_to_scrape:
             url_yielded = 0
+
+            # Stage 0 — ScrapingBee (managed DataDome bypass) ────────────
+            # If SCRAPINGBEE_API_KEY is set, this is the cheapest +
+            # most reliable path. ~95-98% success at ~5 credits/call.
+            if SCRAPINGBEE_KEY:
+                try:
+                    status, html = _via_scrapingbee(zone_url)
+                    if status == 200 and html and "datadome" not in html.lower():
+                        sb_items = self._parse_html(html, zone)
+                        if sb_items:
+                            log.info(
+                                "[idealista] ScrapingBee OK zone={z} {lbl} ({n} items)",
+                                z=zone, lbl=label, n=len(sb_items),
+                            )
+                            for item in sb_items:
+                                url_yielded += 1
+                                yield item
+                            total_yielded += url_yielded
+                            continue
+                    else:
+                        log.debug(
+                            "[idealista] ScrapingBee status={s} datadome={dd} — falling through",
+                            s=status, dd="datadome" in (html or "").lower(),
+                        )
+                except Exception as e:
+                    log.debug("[idealista] ScrapingBee path failed: {e}", e=e)
 
             # Stage 1 — httpx (fast path)
             try:
