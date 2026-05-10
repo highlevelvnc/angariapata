@@ -234,6 +234,24 @@ def _motivation_badges(lead: Lead) -> list[str]:
     if reason and reason in reason_emoji:
         out.append(f"{reason_emoji[reason]} {reason}")
 
+    # 🆕 Recency (Sprint Engine HH) · listings frescos convertem mais
+    if lead.first_seen_at:
+        from datetime import datetime as _dt
+        age_h = (_dt.utcnow() - lead.first_seen_at).total_seconds() / 3600
+        if age_h <= 24:
+            out.append("🆕 NOVO HOJE")
+        elif age_h <= 168:  # 7 days
+            out.append("🌟 ESTA SEMANA")
+
+    # 👥 Multi-property owner (Sprint Engine WW)
+    try:
+        from pipeline.owner_profile import get_profile
+        p = get_profile(lead)
+        if p.is_multi_property and p.listings_count >= 2:
+            out.append(f"👥 PORTFÓLIO {p.listings_count}×")
+    except Exception:
+        pass
+
     return out
 
 # ── Commercial insight — richer than generic insight ─────────────────────────
@@ -333,11 +351,19 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
     wa_msg, wa_link = _personalised_whatsapp(lead)
     badges    = _motivation_badges(lead)
 
+    # Sprint Engine WW · owner profile summary
+    try:
+        from pipeline.owner_profile import get_profile, format_profile_summary
+        owner_summary = format_profile_summary(get_profile(lead))
+    except Exception:
+        owner_summary = "—"
+
     row = {
         "rank":          rank,
         "score":         lead.score or 0,
         "label":         lead.score_label or "COLD",
         "badges":        " · ".join(badges) if badges else "—",
+        "owner_profile": owner_summary,
         "nome":          lead.contact_name or "—",
         "telefone":      phone,
         "tipo_telefone": tipo_tel,
@@ -713,7 +739,8 @@ def export_commercial_xlsx(
         ("#",            "rank",          4),
         ("Score",        "score",         7),
         ("Label",        "label",         8),
-        ("Sinais",       "badges",       28),
+        ("Sinais",       "badges",       30),
+        ("Perfil Vendedor","owner_profile",30),
         ("Nome",         "nome",         22),
         ("Telefone",     "telefone",     16),
         ("Tipo Tel.",    "tipo_telefone",12),

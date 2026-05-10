@@ -112,12 +112,16 @@ def _():
         _short_zone, _first_name,
     )
     # Smoke a synthetic lead through the badge function
+    from datetime import datetime, timedelta
     class L: pass
     l = L()
-    l.score=95; l.score_label='HOT'; l.is_owner=True; l.lead_type='fsbo'
+    l.id=999_999; l.score=95; l.score_label='HOT'; l.is_owner=True; l.lead_type='fsbo'
     l.agency_name=None; l.price=600000; l.zone='Estrela'; l.parish=''
     l.sources_json=''; l.days_on_market=70; l.price_changes=''; l.re_list_count=0
     l.contact_confidence=85
+    l.first_seen_at = datetime.utcnow() - timedelta(hours=12)  # for HH recency badge
+    l.contact_phone = None  # owner_profile gracefully returns empty
+    l.score_breakdown = '{}'
     badges = _motivation_badges(l)
     assert "⭐ ELITE" in badges
     assert "👤 PROPRIETÁRIO" in badges

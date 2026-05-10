@@ -159,22 +159,25 @@ class ImovirtualScraper(BaseScraper):
     SOURCE = "imovirtual"
     PERSONA_HOST = "imovirtual.com"
 
-    def __init__(self, max_pages: int = 5, fetch_phone: bool = True):
+    def __init__(self, max_pages: int | None = None, fetch_phone: bool = True):
         """
         Args:
-            max_pages:   Max pages to paginate per zone+category.  Default
-                         lowered from 15 to 5 on 2026-05-08: with 22 Lisbon
-                         freguesias × 4 categories × 2 paths (buy+rent), 15
-                         pages took 13min+ per freguesia. 5 pages still
-                         covers every recently-posted listing on Imovirtual
-                         (most freguesias have <125 active listings) while
-                         keeping a full sweep under ~3-4 min per freguesia.
+            max_pages:   Max pages to paginate per zone+category. Sprint
+                         Engine GG (2026-05-10) lowered default from 5→3
+                         since Imovirtual sorts by date desc — page 1-3
+                         covers all recent listings (premium signal). Pages
+                         4+ are mostly stale repeats. Override via env:
+                         ``SCRAPER_MAX_PAGES=5`` for old behaviour.
             fetch_phone: After httpx detail fetch, use Playwright to reveal the
                          phone number for listings still missing one.
                          Requires playwright + chromium installed.
                          Silently skipped when Playwright is unavailable.
                          Limited to MAX_PLAYWRIGHT_PHONE_FETCHES per zone.
         """
+        if max_pages is None:
+            import os as _os
+            _v = (_os.getenv("SCRAPER_MAX_PAGES", "") or "3").strip() or "3"
+            max_pages = int(_v)
         super().__init__()
         self.max_pages   = max_pages
         self.fetch_phone = fetch_phone

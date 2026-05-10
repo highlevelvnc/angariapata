@@ -204,22 +204,24 @@ class OLXScraper(BaseScraper):
 
     SOURCE = "olx"
 
-    def __init__(self, max_pages: int = 5, fetch_details: bool = True, fetch_phone: bool = True):
+    def __init__(self, max_pages: int | None = None, fetch_details: bool = True, fetch_phone: bool = True):
         """
         Args:
-            max_pages:    Max pages to paginate per zone+keyword. Default
-                          lowered from 15 to 5 on 2026-05-08: with 2 buy
-                          keywords (apartamento+moradia) × 2 paths
-                          (buy+rent) = 4 sweeps per zone, 15 pages each
-                          made full runs untenable. 5 pages still covers
-                          all recently-posted listings (each OLX page ≈ 50
-                          ads, so 250/keyword/zone is plenty).
+            max_pages:    Max pages to paginate per zone+keyword. Sprint
+                          Engine GG (2026-05-10) lowered default from 5→3
+                          since OLX sorts by ``most-recent`` — page 1-3
+                          covers freshly posted ads. Override via env:
+                          ``SCRAPER_MAX_PAGES=5`` for old behaviour.
             fetch_details: Fetch each ad's detail page (description, params, seller).
             fetch_phone:  After the httpx detail fetch, attempt Playwright phone reveal
                           for ads still missing a phone number. Requires playwright to
                           be installed (`playwright install chromium`). Silently skipped
                           when Playwright is not available.
         """
+        if max_pages is None:
+            import os as _os
+            _v = (_os.getenv("SCRAPER_MAX_PAGES", "") or "3").strip() or "3"
+            max_pages = int(_v)
         super().__init__()
         self.max_pages     = max_pages
         self.fetch_details = fetch_details
