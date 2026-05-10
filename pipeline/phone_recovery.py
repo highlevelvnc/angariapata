@@ -336,6 +336,226 @@ def olx_aggressive_reveal(limit: int = 200) -> dict:
     return stats
 
 
+# ── Sprint I · raw_data deep scan ────────────────────────────────────
+
+def raw_data_deep_scan() -> dict:
+    """
+    Sprint I · scan FULL raw_data JSON (not just truncated description) for
+    phone patterns. The Lead.description field is capped at 2000 chars but
+    the original scraper response may have the phone further down.
+    """
+    stats = {"checked": 0, "recovered": 0, "by_source": {}}
+    with get_db() as db:
+        # Get leads with no real phone, joined with their raw_listing
+        leads = (
+            db.query(Lead)
+            .filter(Lead.archived == False)              # noqa: E712
+            .filter(or_(
+                Lead.phone_type.in_(("relay", "unknown", "invalid")),
+                Lead.phone_type.is_(None),
+                Lead.contact_phone.is_(None),
+                Lead.contact_phone == "",
+            ))
+            .all()
+        )
+        stats["checked"] = len(leads)
+
+        for lead in leads:
+            # Find matching raw_listing via URL
+            try:
+                src_list = json.loads(lead.sources_json or "[]")
+                url = src_list[0].get("url", "") if src_list else ""
+            except Exception:
+                url = ""
+            if not url:
+                continue
+
+            raw = (
+                db.query(RawListing)
+                .filter(RawListing.url == url)
+                .first()
+            )
+            if not raw or not raw.raw_data:
+                continue
+
+            phones = (
+                _extract_real_phones_from_text(raw.raw_data) +
+                _extract_wame_phones(raw.raw_data)
+            )
+            if phones:
+                lead.contact_phone = phones[0]
+                lead.phone_type = classify_phone_type(phones[0][4:])
+                lead.contact_source = (lead.contact_source or "") + " + raw_deep"
+                stats["recovered"] += 1
+                src = lead.discovery_source or "?"
+                stats["by_source"][src] = stats["by_source"].get(src, 0) + 1
+        db.commit()
+    log.info(
+        "[recovery.raw_deep] checked={c} recovered={r} by_source={b}",
+        c=stats["checked"], r=stats["recovered"], b=stats["by_source"],
+    )
+    return stats
+
+
+# ── Sprint K · cross-portal fuzzy title match ────────────────────────
+
+def fuzzy_cross_portal_match() -> dict:
+    """
+    Sprint K · for each lead with relay phone, look for SIBLING listing on
+    OTHER portal with similar title + price + zone + tipologia. If sibling
+    has real phone, inherit.
+
+    More aggressive than fingerprint match — catches near-duplicates that
+    fail the strict fingerprint hash.
+    """
+    from difflib import SequenceMatcher
+
+    def title_sim(a: str, b: str) -> float:
+        if not a or not b:
+            return 0.0
+        return SequenceMatcher(None, a.lower()[:80], b.lower()[:80]).ratio()
+
+    stats = {"checked": 0, "recovered": 0, "by_source": {}}
+    with get_db() as db:
+        # Bad leads (need recovery)
+        bad_leads = (
+            db.query(Lead)
+            .filter(Lead.archived == False)              # noqa: E712
+            .filter(or_(
+                Lead.phone_type.in_(("relay", "unknown", "invalid")),
+                Lead.phone_type.is_(None),
+            ))
+            .all()
+        )
+        stats["checked"] = len(bad_leads)
+
+        # Pre-load good leads (with real phone) indexed by zone+typology
+        good_leads = (
+            db.query(Lead)
+            .filter(
+                Lead.archived == False,
+                Lead.phone_type.in_(("mobile", "landline")),
+            )
+            .all()
+        )
+        good_by_key = {}
+        for g in good_leads:
+            key = ((g.zone or "")[:30], (g.typology or "")[:5])
+            good_by_key.setdefault(key, []).append(g)
+
+        for lead in bad_leads:
+            key = ((lead.zone or "")[:30], (lead.typology or "")[:5])
+            candidates = good_by_key.get(key, [])
+            if not candidates:
+                continue
+
+            # Filter by price proximity (±10%) + title similarity ≥0.7
+            for c in candidates:
+                if c.discovery_source == lead.discovery_source:
+                    continue
+                # Price check (allow ±10%)
+                if lead.price and c.price:
+                    delta = abs(c.price - lead.price) / max(lead.price, 1)
+                    if delta > 0.10:
+                        continue
+                # Title similarity check
+                if title_sim(lead.title, c.title) < 0.6:
+                    continue
+                # Match found
+                lead.contact_phone = c.contact_phone
+                lead.phone_type    = c.phone_type
+                if not lead.contact_name and c.contact_name:
+                    lead.contact_name = c.contact_name
+                lead.contact_source = (lead.contact_source or "") + f" + fuzzy_cross({c.discovery_source})"
+                stats["recovered"] += 1
+                src = lead.discovery_source or "?"
+                stats["by_source"][src] = stats["by_source"].get(src, 0) + 1
+                break
+        db.commit()
+    log.info(
+        "[recovery.fuzzy] checked={c} recovered={r} by_source={b}",
+        c=stats["checked"], r=stats["recovered"], b=stats["by_source"],
+    )
+    return stats
+
+
+# ── Sprint J · Detail page re-fetch (httpx, no Playwright) ───────────
+
+def detail_page_rescan(limit: int = 300) -> dict:
+    """
+    Sprint J · for leads with relay phone, re-fetch the listing detail
+    page via httpx (no browser) and aggressively scan the FULL HTML for
+    real phones. Sometimes phones are buried in:
+      - JSON-LD <script> blocks
+      - <meta property="og:phone">
+      - inline JS (window.__INITIAL_STATE__)
+      - structured data attributes (itemprop="telephone")
+
+    httpx-only = 100x faster than Playwright reveal. Volume-friendly.
+    """
+    import httpx as _httpx
+    stats = {"checked": 0, "fetched": 0, "recovered": 0, "by_source": {}, "errors": 0}
+
+    with get_db() as db:
+        bad_leads = (
+            db.query(Lead)
+            .filter(Lead.archived == False)              # noqa: E712
+            .filter(or_(
+                Lead.phone_type.in_(("relay", "unknown", "invalid")),
+                Lead.phone_type.is_(None),
+            ))
+            .order_by(Lead.score.desc().nullslast())
+            .limit(limit)
+            .all()
+        )
+        stats["checked"] = len(bad_leads)
+        if not bad_leads:
+            return stats
+
+        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+        with _httpx.Client(headers={"User-Agent": ua}, timeout=12, follow_redirects=True) as client:
+            for lead in bad_leads:
+                try:
+                    src_list = json.loads(lead.sources_json or "[]")
+                    url = src_list[0].get("url", "") if src_list else ""
+                except Exception:
+                    url = ""
+                if not url:
+                    continue
+                try:
+                    r = client.get(url)
+                    if r.status_code != 200:
+                        continue
+                    stats["fetched"] += 1
+                    # Aggressive scan: full HTML + extract real phones
+                    phones = _extract_real_phones_from_text(r.text)
+                    phones += _extract_wame_phones(r.text)
+                    # Also check for itemprop/JSON-LD telephone fields
+                    for m in re.finditer(r'"telephone"\s*:\s*"\+?(\d[\d\s\-]{8,15})"', r.text):
+                        digits = re.sub(r"\D", "", m.group(1))
+                        if digits.startswith("351"):
+                            digits = digits[3:]
+                        if len(digits) == 9 and classify_phone_type(digits) in ("mobile", "landline"):
+                            phones.append("+351" + digits)
+                    if phones:
+                        # Dedup keep order
+                        phones = list(dict.fromkeys(phones))
+                        lead.contact_phone = phones[0]
+                        lead.phone_type    = classify_phone_type(phones[0][4:])
+                        lead.contact_source = (lead.contact_source or "") + " + detail_rescan"
+                        stats["recovered"] += 1
+                        src = lead.discovery_source or "?"
+                        stats["by_source"][src] = stats["by_source"].get(src, 0) + 1
+                except Exception:
+                    stats["errors"] += 1
+        db.commit()
+    log.info(
+        "[recovery.detail] checked={c} fetched={f} recovered={r} errors={e}",
+        c=stats["checked"], f=stats["fetched"], r=stats["recovered"], e=stats["errors"],
+    )
+    return stats
+
+
 # ── CLI orchestrator ─────────────────────────────────────────────────
 
 def cli_recovery_full(include_aggressive: bool = False, olx_limit: int = 200) -> dict:
