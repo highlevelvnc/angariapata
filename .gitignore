@@ -49,6 +49,10 @@ data/leads_*.json
 data/leads_export_*.csv
 data/leads_comercial_*.xlsx
 data/normalizado.xlsx
+data/cookies/
+data/run_state.json
+data/persona_health.json
+data/schedules.json
 exports/
 
 # ─── Logs ────────────────────────────────────────────────────────────────────

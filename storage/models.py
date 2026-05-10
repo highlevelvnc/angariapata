@@ -122,6 +122,18 @@ class Lead(Base):
     seller_member_since:   Mapped[Optional[str]] = mapped_column(String(80))
     seller_super_flag:     Mapped[bool]          = mapped_column(Boolean, default=False)
 
+    # ── First listing image URL ──────────────────────────────────────────────
+    # Captured by scrapers. Used by image_hasher to download + compute pHash.
+    # Sprint Engine B · 2026-05.
+    image_url:             Mapped[Optional[str]] = mapped_column(Text)
+
+    # ── Re-listing counter ──────────────────────────────────────────────────
+    # Sprint Engine C · increments each time a lead transitions from
+    # archived/dropped → active. A re-listed property is a strong motivated-
+    # seller signal. Drives the "🔄 RE-LISTADO" badge.
+    re_list_count:         Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_relisted_at:      Mapped[Optional[datetime]] = mapped_column(DateTime)
+
     # ── Photo perceptual hash ────────────────────────────────────────────────
     # Populated by ``utils.image_hasher.backfill_image_hashes`` from the
     # first listing image. Consumed by ``photo_dedup_sweep`` to merge cross-

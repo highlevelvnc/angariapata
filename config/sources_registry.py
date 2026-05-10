@@ -126,14 +126,13 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
             "Seixal":   "seixal",
             "Sesimbra": "sesimbra",
         },
-        is_active = False,
+        is_active = True,
         notes = (
-            "DISABLED 2026-05-08: returns 429 Too Many Requests after the 1st "
-            "request from any single IP, even with random user-agent and httpx "
-            "alone. Per-IP rate-limit too aggressive for a 36-zone × 3-category "
-            "daily sweep without rotating proxies. Re-enable when residential "
-            "proxy rotation is in place. URL+selectors validated 2026-03 — "
-            "scraper code is fine, the obstacle is purely network-level."
+            "RE-ENABLED 2026-05-10 (smoke test passed): direct request from "
+            "current IP returned listings without 429. Limited to 6 core zones "
+            "(Lisboa metro + costa) to stay under the per-IP threshold. "
+            "If 429 reappears, disable and add residential proxy rotation. "
+            "Previously disabled 2026-05-08 due to rate-limit on 36-zone sweeps."
         ),
     ),
 

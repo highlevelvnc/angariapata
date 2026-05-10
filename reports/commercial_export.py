@@ -70,6 +70,150 @@ _PHONE_LABELS = {
     "unknown":  "Desconhecido",
 }
 
+
+# ── Personalised WhatsApp message ──────────────────────────────────────────────
+def _first_name(name: str | None) -> str:
+    if not name:
+        return ""
+    parts = name.strip().split()
+    return parts[0].title() if parts else ""
+
+
+def _short_zone(zone: str | None) -> str:
+    """Return a clean zone name without parish-cascade noise."""
+    if not zone:
+        return "Lisboa"
+    z = zone.strip()
+    # Strip everything after first comma (parish cascade like "Estrela, Lisboa, Lisboa")
+    if "," in z:
+        z = z.split(",")[0].strip()
+    # Strip "Lisboa-" prefix
+    z = z.replace("Lisboa-", "").replace("-", " ").strip()
+    return z or "Lisboa"
+
+
+def _personalised_whatsapp(lead: Lead) -> tuple[str, str]:
+    """
+    Build (message, wa_link) personalised by typology, zone and lead_type.
+
+    Tone: friendly, direct, PT-PT, name the lead by context.
+    Designed for the Patabrava agency (Lisbon luxury). Keep under 320 chars
+    so it fits WhatsApp preview without truncation.
+    """
+    from urllib.parse import quote
+
+    phone   = _canonical_phone(lead.contact_phone or "") or (lead.contact_phone or "")
+    if not phone:
+        return ("", "")
+
+    fn   = _first_name(lead.contact_name)
+    typ  = (lead.typology or "").strip()
+    pt   = (lead.property_type or "").strip().lower()
+    zone = _short_zone(lead.zone)
+    lt   = (lead.lead_type or "").lower()
+    price = lead.price
+
+    # Subject reference
+    if pt == "terreno" or typ == "Terreno":
+        subj = f"o seu terreno em {zone}"
+    elif pt == "moradia" or "moradia" in (lead.title or "").lower():
+        subj = f"a sua moradia em {zone}"
+    elif typ:
+        subj = f"o seu {typ} em {zone}"
+    else:
+        subj = f"o seu imóvel em {zone}"
+
+    # Action verb
+    if lt == "frbo":
+        action = "arrendar"
+    else:
+        action = "vender"
+
+    greet = f"Olá {fn}!" if fn else "Boa tarde!"
+
+    msg = (
+        f"{greet} Vi o seu anúncio sobre {subj} e fiquei interessado(a). "
+        f"Sou da Pata Brava — trabalhamos exactamente nesta zona com clientes "
+        f"que procuram este perfil. Está aberto(a) a uma breve conversa "
+        f"sobre {action}? Obrigado!"
+    )
+
+    digits = phone.replace("+", "").replace(" ", "")
+    wa_link = f"https://wa.me/{digits}?text={quote(msg)}"
+    return (msg, wa_link)
+
+
+# ── Motivation badges ──────────────────────────────────────────────────────────
+def _motivation_badges(lead: Lead) -> list[str]:
+    """
+    Detect signals that hint at a motivated seller. Returns a list of
+    short emoji-prefixed labels suitable for an XLSX column or HTML chip.
+
+    Signals (active today; days_on_market + price_drop activate after 2nd run):
+      🔗 EM 2+ PORTAIS — listed in OLX and Imovirtual simultaneously
+      ⭐ ELITE         — score 90+ (top 5 % of HOT)
+      👤 PROPRIETÁRIO  — confirmed FSBO (no agency)
+      💎 LUXURY        — price ≥ 500 000 € (Patabrava sweet spot)
+      📍 ZONA PRIME    — Estrela / Misericórdia / Santo Antonio / Cascais centro
+      🔥 BAIXOU PREÇO  — price drop >5 % vs 30 d ago (only after run #2)
+      📅 LONGO MERCADO — days_on_market > 60 (only after run #2)
+    """
+    out: list[str] = []
+
+    # 🔗 Multi-portal
+    sj = (lead.sources_json or "")
+    has_imo = "imovirtual" in sj.lower()
+    has_olx = '"olx"' in sj.lower() or "olx.pt" in sj.lower()
+    if has_imo and has_olx:
+        out.append("🔗 EM 2 PORTAIS")
+
+    # ⭐ Elite score
+    if (lead.score or 0) >= 90:
+        out.append("⭐ ELITE")
+
+    # 👤 FSBO
+    if getattr(lead, "is_owner", False) and (lead.lead_type or "").lower() in ("fsbo","frbo","active_owner"):
+        if not lead.agency_name:
+            out.append("👤 PROPRIETÁRIO")
+
+    # 💎 Luxury price (sale only)
+    if lead.price and lead.price >= 500_000 and (lead.lead_type or "").lower() != "frbo":
+        out.append("💎 LUXURY")
+
+    # 📍 Prime zone
+    z = (lead.zone or "").lower()
+    parish = (lead.parish or "").lower()
+    prime_keywords = (
+        "estrela","misericórdia","misericordia","santo antónio","santo antonio",
+        "lapa","chiado","príncipe real","principe real","baixa","alfama",
+        "cascais centro","estoril","quinta da marinha","monte estoril",
+    )
+    if any(k in z or k in parish for k in prime_keywords):
+        out.append("📍 ZONA PRIME")
+
+    # 🔥 Price drop (requires history)
+    if lead.price_changes and lead.price_changes != "{}":
+        out.append("🔥 PREÇO BAIXOU")
+
+    # 📅 Long on market (only meaningful after multiple runs)
+    if (lead.days_on_market or 0) >= 60:
+        out.append("📅 LONGO MERCADO")
+
+    # 🔄 Re-listed (Sprint Engine C) — strong motivation signal
+    rl = getattr(lead, "re_list_count", 0) or 0
+    if rl >= 1:
+        out.append(f"🔄 RE-LISTADO {rl}×")
+
+    # ✓ Confidence tier (Sprint Integrity N)
+    conf = getattr(lead, "contact_confidence", 0) or 0
+    if conf >= 80:
+        out.append(f"✓ ALTA CONFIANÇA {conf}")
+    elif conf >= 60:
+        out.append(f"◔ MÉDIA CONFIANÇA {conf}")
+    # baixa confiança: NÃO se exibe (silêncio = aviso)
+
+    return out
+
 # ── Commercial insight — richer than generic insight ─────────────────────────
 _URGENCY_RE: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\burgente\b|\burgência\b", re.I),              "venda urgente"),
@@ -164,16 +308,19 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
     url       = _get_url(lead.sources_json or "[]") or (lead.url if hasattr(lead, "url") else "")
     conf      = _confidence_label(lead)
     insight   = _commercial_insight(lead)
-    wa_link   = _whatsapp_link(phone) if phone else ""
+    wa_msg, wa_link = _personalised_whatsapp(lead)
+    badges    = _motivation_badges(lead)
 
     row = {
         "rank":          rank,
         "score":         lead.score or 0,
         "label":         lead.score_label or "COLD",
+        "badges":        " · ".join(badges) if badges else "—",
         "nome":          lead.contact_name or "—",
         "telefone":      phone,
         "tipo_telefone": tipo_tel,
         "whatsapp":      wa_link,
+        "mensagem_wa":   wa_msg,
         "zona":          lead.zone or "—",
         "concelho":      lead.municipality or lead.zone or "—",
         "tipologia":     lead.typology or "—",
@@ -229,6 +376,8 @@ def generate_premium_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
+                # Sprint Quality C — exclude suspicious listings from Premium
+                (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
             )
             .where(
                 or_(
@@ -324,6 +473,8 @@ def generate_expanded_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
+                # Sprint Quality C — exclude suspicious listings from Premium
+                (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
             )
             .where(
                 or_(
@@ -540,10 +691,12 @@ def export_commercial_xlsx(
         ("#",            "rank",          4),
         ("Score",        "score",         7),
         ("Label",        "label",         8),
+        ("Sinais",       "badges",       28),
         ("Nome",         "nome",         22),
         ("Telefone",     "telefone",     16),
         ("Tipo Tel.",    "tipo_telefone",12),
         ("WhatsApp",     "whatsapp",     18),
+        ("Mensagem WA",  "mensagem_wa",  60),
         ("Zona",         "zona",         12),
         ("Tipologia",    "tipologia",    10),
         ("Preço",        "preco",        14),

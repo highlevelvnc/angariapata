@@ -94,7 +94,7 @@ class PipelineRunner:
         if sources is None:
             sources = [
                 k for k, meta in SOURCE_REGISTRY.items()
-                if meta.is_active and meta.category in ("portal", "classified")
+                if meta.is_active and meta.category in ("portal", "classified", "bank_reo", "auction")
             ]
             log.info(
                 "[runner] auto-selected sources from registry: {s}",
@@ -335,6 +335,20 @@ class PipelineRunner:
                     self.change_detector.emit_note(lead_repo.db, existing, changes)
             except Exception as e:
                 log.debug("[change_detector] error on lead #{id}: {e}", id=existing.id, e=e)
+
+            # 4b. Sprint Engine C — Re-listing detection ──────────────────
+            # If this lead was previously dropped/stale and is back, increment
+            # re_list_count and stamp the timestamp. Strong motivated-seller
+            # signal that drives the "🔄 RE-LISTADO" badge.
+            prev_status = (existing.listing_status or "").lower()
+            if prev_status in ("dropped", "stale_archived"):
+                existing.re_list_count = (existing.re_list_count or 0) + 1
+                existing.last_relisted_at = datetime.utcnow()
+                existing.listing_status = "active"  # reset
+                log.info(
+                    "[re-listing] lead #{id} re-listed (count={n}) zone={z}",
+                    id=existing.id, n=existing.re_list_count, z=existing.zone,
+                )
 
             update_payload = self.deduplicator.build_update_payload(existing, enriched)
             lead_repo.update(existing, update_payload)
@@ -688,6 +702,7 @@ class PipelineRunner:
             "contact_website":  enriched.get("contact_website"),
             "is_owner": enriched.get("is_owner", False),
             "agency_name": enriched.get("agency_name"),
+            "image_url": enriched.get("image_url"),  # Sprint Engine B
             "sources_json": json.dumps(sources_list, default=str),
             "days_on_market": enriched.get("days_on_market", 0),
             "first_seen_at": datetime.utcnow(),

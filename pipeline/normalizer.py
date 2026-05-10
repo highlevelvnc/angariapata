@@ -845,6 +845,7 @@ class Normalizer:
             "source": "imovirtual",
             "url": url,
             "external_id": raw.get("external_id"),
+            "image_url": raw.get("image_url"),  # Sprint Engine B
         }
 
     # ── Idealista ────────────────────────────────────────────────────────────

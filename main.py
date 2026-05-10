@@ -820,6 +820,40 @@ def trend_report(out: str, days: int):
     console.print(f"[green]✓ PDF saved → {path}[/green]")
 
 
+@cli.command(name="quality-pass")
+@click.option("--min-occurrences", default=4, type=int, show_default=True,
+              help="Phones em ≥N listings = flipper (downgrade para agency)")
+@click.option("--min-severity", default=2, type=int, show_default=True,
+              help="Severidade mínima para marcar suspicious (1-3)")
+def quality_pass(min_occurrences: int, min_severity: int):
+    """Sprint Quality A+C · caça-flippers + detector de listings suspeitos.
+
+    Filtra leads de baixa qualidade ANTES da entrega à Susana:
+
+      • Phones que aparecem em N+ listings → marcados como agency
+        (não são proprietários reais, são flippers profissionais)
+
+      • Listings com títulos all-caps, !!!! spam, palavras de fraude,
+        preços fora do intervalo razoável → flagged 'suspicious'
+        (excluídos da Premium list automaticamente)
+
+    Idempotent · pode correr várias vezes sem efeitos colaterais.
+    """
+    import json
+    from pipeline.quality_filter import flag_flippers, flag_suspicious
+    console.print("[cyan]Quality pass — caça-flippers + suspicious detector...[/cyan]")
+    f = flag_flippers(min_occurrences=min_occurrences)
+    s = flag_suspicious(min_severity=min_severity)
+    console.print("\n[bold]✓ Flipper detector:[/bold]")
+    for k, v in f.items(): console.print(f"  {k:24s} {v}")
+    console.print("\n[bold]✓ Suspicious detector:[/bold]")
+    console.print(f"  considered  {s['considered']}")
+    console.print(f"  flagged     {s['flagged']}")
+    if s.get("by_rule"):
+        console.print("  por regra:")
+        for k, v in s["by_rule"].items(): console.print(f"    · {k}: {v}")
+
+
 @cli.command(name="detect-price-drops")
 @click.option("--lookback-days",      default=30, type=int, show_default=True)
 @click.option("--recent-window-days", default=14, type=int, show_default=True)

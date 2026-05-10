@@ -8028,7 +8028,8 @@ elif page == "&#9881;  Motor":
         new_sources = st.multiselect(t("sch.field.sources"), SOURCE_OPTIONS,
                                      default=["olx", "imovirtual"], key="sch_new_sources")
 
-        ZONE_PRESETS = list(settings.zones)
+        from config.settings import settings as _settings
+        ZONE_PRESETS = list(_settings.zones)
         new_zones = st.multiselect(t("sch.field.zones"), ZONE_PRESETS,
                                    default=[], key="sch_new_zones")
 

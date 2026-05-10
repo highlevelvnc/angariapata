@@ -73,8 +73,50 @@ _ZONE_CENTROIDS: dict[str, tuple[float, float]] = {
     "Montijo":   (38.7060, -8.9744),
     "Palmela":   (38.5703, -8.9000),
     "Setubal":   (38.5244, -8.8882),
+    "Setúbal":   (38.5244, -8.8882),
     "Moita":     (38.6478, -8.9897),
     "Alcochete": (38.7547, -8.9636),
+
+    # ── Porto district ─────────────────────────────────────────────────
+    "Porto":               (41.1579, -8.6291),
+    "Vila Nova de Gaia":   (41.1241, -8.6052),
+    "Vila-Nova-De-Gaia":   (41.1241, -8.6052),
+    "Gondomar":            (41.1394, -8.5328),
+    "Maia":                (41.2278, -8.6222),
+    "Matosinhos":          (41.1839, -8.6929),
+    "Valongo":             (41.1864, -8.4978),
+
+    # ── Aveiro district ────────────────────────────────────────────────
+    "Aveiro":              (40.6405, -8.6538),
+    "Oliveira de Azeméis": (40.8400, -8.4760),
+    "Oliveira-De-Azemeis": (40.8400, -8.4760),
+    "Espinho":             (41.0072, -8.6411),
+
+    # ── Other PT districts (fallback) ──────────────────────────────────
+    "Coimbra":  (40.2033, -8.4103),
+    "Leiria":   (39.7437, -8.8071),
+    "Faro":     (37.0194, -7.9322),
+    "Loulé":    (37.1392, -8.0237),
+    "Loule":    (37.1392, -8.0237),
+    "Quarteira":(37.0700, -8.1006),
+    "Braga":    (41.5454, -8.4265),
+    "Évora":    (38.5667, -7.9000),
+    "Evora":    (38.5667, -7.9000),
+    "Viseu":    (40.6610, -7.9097),
+    "Santarém": (39.2369, -8.6859),
+    "Santarem": (39.2369, -8.6859),
+    "Beja":     (38.0150, -7.8650),
+    "Portalegre":(39.2920, -7.4286),
+    "Castelo Branco":(39.8222, -7.4912),
+    "Guarda":   (40.5371, -7.2676),
+    "Bragança": (41.8061, -6.7567),
+    "Braganca": (41.8061, -6.7567),
+    "Viana do Castelo":(41.6918, -8.8345),
+    "Viana-Do-Castelo":(41.6918, -8.8345),
+    "Vila Real": (41.3001, -7.7460),
+    "Vila-Real": (41.3001, -7.7460),
+    "Póvoa De Varzim": (41.3804, -8.7589),
+    "Poligonal": (41.3804, -8.7589),
 
     # ── Lisbon freguesias ──────────────────────────────────────────────
     "Lisboa-Alvalade":              (38.7506, -9.1450),
@@ -100,6 +142,39 @@ _ZONE_CENTROIDS: dict[str, tuple[float, float]] = {
     "Lisboa-Sao-Domingos-de-Benfica": (38.7547, -9.1771),
     "Lisboa-Sao-Vicente":           (38.7239, -9.1278),
 }
+
+
+# ── Fuzzy centroid resolver ──────────────────────────────────────────────────
+
+def _fuzzy_centroid(zone: str) -> Optional[tuple[float, float]]:
+    """
+    Try to extract a known municipality from a parish-cascade string.
+
+    Many leads come with zone strings like:
+      "Baixa - Centro Histórico, S. Julião, ..., Setúbal, Setúbal"
+      "Centro De Gondomar, Gondomar (São Cosme), ..., Gondomar, Porto"
+      "Aguda - Granja, Arcozelo, Vila Nova De Gaia, Porto"
+
+    Strategy: split on commas, walk from the END (most general → district)
+    matching against ``_ZONE_CENTROIDS``. Last-token-wins because the rightmost
+    component is typically the district/municipality.
+
+    Falls back to None if no segment matches.
+    """
+    if not zone:
+        return None
+    parts = [p.strip() for p in zone.split(",") if p.strip()]
+    if not parts:
+        return None
+    # Walk from rightmost (district) backwards to leftmost (specific)
+    for p in reversed(parts):
+        # Strip parenthetical disambiguators: "Setúbal (São Sebastião)" → "Setúbal"
+        clean = re.sub(r"\s*\([^)]*\)\s*", "", p).strip()
+        # Try exact, title-case, and a few common variants
+        for variant in (clean, clean.title(), clean.lower().capitalize()):
+            if variant in _ZONE_CENTROIDS:
+                return _ZONE_CENTROIDS[variant]
+    return None
 
 
 # ── Cache table (lightweight, lives in same SQLite DB) ───────────────────────
@@ -229,9 +304,18 @@ class Geocoder:
                 return GeocodeResult(coords[0], coords[1], "nominatim")
 
         # 3. Zone centroid fallback
-        centroid = _ZONE_CENTROIDS.get(zone or "")
+        # In offline mode (e.g. inside the pipeline hot path), skip the
+        # cache write — the outer pipeline session holds the SQLite write
+        # lock during its 50-row batches, so every nested write here would
+        # block on busy_timeout (=20s) and turn the run into a crawl.
+        # The zone centroid is a static lookup, recomputable any time, so
+        # caching offers ~zero speed-up vs the cost of contention. The
+        # offline ``main.py geocode-leads`` command persists real (Nominatim)
+        # results in batch when network IS allowed.
+        centroid = _ZONE_CENTROIDS.get(zone or "") or _fuzzy_centroid(zone or "")
         if centroid:
-            self._store_cache(key, address or "", zone or "", *centroid, "zone_centroid")
+            if allow_network:
+                self._store_cache(key, address or "", zone or "", *centroid, "zone_centroid")
             return GeocodeResult(centroid[0], centroid[1], "zone_centroid")
 
         return None

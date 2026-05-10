@@ -506,14 +506,27 @@ class OLXScraper(BaseScraper):
         if seller_el:
             item["contact_name"] = seller_el.get_text(strip=True)[:200]
 
-        # ── Seller profile URL
+        # ── Seller profile URL · Sprint Engine D (OLX changed paths in 2026)
+        # Try a comprehensive set of selectors covering historical patterns
+        # and current data-testid attributes. Pattern audit 2026-05.
         seller_link = (
+            # Modern OLX PT (2026): direct testid + /utilizador/ path
+            soup.select_one("[data-testid='user-link'] a") or
+            soup.select_one("a[data-testid='user-profile-link']") or
+            soup.select_one("a[href*='/utilizador/']") or
+            soup.select_one("a[href*='/users/']") or
+            # Container-anchored fallbacks (safer if testids change again)
+            soup.select_one("[data-testid='user-profile-user-name'] a") or
+            soup.select_one(".css-1xhpi8a a[href]") or
+            # Legacy patterns (still kept for older listings)
             soup.select_one("a[href*='/perfil/']") or
-            soup.select_one("a[href*='/d/perfil/']")
+            soup.select_one("a[href*='/d/perfil/']") or
+            # Last resort: parent/ancestor of the seller name links to profile
+            (seller_el.find_parent("a") if seller_el else None)
         )
         if seller_link:
             href = seller_link.get("href", "")
-            if href:
+            if href and href != "#" and not href.startswith("javascript:"):
                 profile_url = href if href.startswith("http") else urljoin(BASE_URL, href)
                 item["seller_profile_url"] = profile_url
 
@@ -746,17 +759,22 @@ class OLXScraper(BaseScraper):
             if seller_el:
                 item["contact_name"] = seller_el.get_text(strip=True)[:200]
 
-            # ── Seller profile URL (key for the seller-profile sweep) ─────────
-            # OLX puts the profile path on the wrapper anchor: /perfil/<slug>/
-            # Capturing it now means the seller-profile enricher can group
-            # listings by seller without re-parsing the detail page later.
+            # ── Seller profile URL · Sprint Engine D ─────────────────────────
+            # OLX changed paths in 2026. Comprehensive selector chain so we
+            # don't lose this field again when they next refactor the markup.
             seller_link = (
+                soup.select_one("[data-testid='user-link'] a") or
+                soup.select_one("a[data-testid='user-profile-link']") or
+                soup.select_one("a[href*='/utilizador/']") or
+                soup.select_one("a[href*='/users/']") or
+                soup.select_one("[data-testid='user-profile-user-name'] a") or
                 soup.select_one("a[href*='/perfil/']") or
-                soup.select_one("a[href*='/d/perfil/']")
+                soup.select_one("a[href*='/d/perfil/']") or
+                (seller_el.find_parent("a") if seller_el else None)
             )
             if seller_link:
                 href = seller_link.get("href", "")
-                if href:
+                if href and href != "#" and not href.startswith("javascript:"):
                     profile_url = href if href.startswith("http") else urljoin(BASE_URL, href)
                     item["seller_profile_url"] = profile_url
 

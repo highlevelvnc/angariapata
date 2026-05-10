@@ -385,14 +385,22 @@ def _migrate_image_phash() -> None:
     Idempotent migration: add ``image_phash`` for the photo dedup pass.
     Stores the perceptual hash as 16-char hex; populated by the
     ``utils.image_hasher`` backfill task and consumed by photo_dedup_sweep.
+    Also adds the companion ``image_url`` column (Sprint Engine B 2026-05)
+    and re-listing counter (Sprint Engine C 2026-05).
     """
     from sqlalchemy import text
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE leads ADD COLUMN image_phash VARCHAR(20)"))
-            conn.commit()
-    except Exception:
-        pass     # column already exists
+    for stmt in (
+        "ALTER TABLE leads ADD COLUMN image_phash VARCHAR(20)",
+        "ALTER TABLE leads ADD COLUMN image_url TEXT",
+        "ALTER TABLE leads ADD COLUMN re_list_count INTEGER DEFAULT 0",
+        "ALTER TABLE leads ADD COLUMN last_relisted_at DATETIME",
+    ):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(stmt))
+                conn.commit()
+        except Exception:
+            pass     # column already exists
 
 
 def _migrate_amenity_tags() -> None:

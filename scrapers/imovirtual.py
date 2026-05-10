@@ -396,17 +396,57 @@ class ImovirtualScraper(BaseScraper):
                 result["phone_type"]         = picked.phone_type
                 result["contact_confidence"] = picked.confidence
 
+        # Sprint Integrity O · contact_name capture (expanded 2026)
+        # Imovirtual went through 3 markup refactors. Cover all known versions.
         name_el = (
+            # 2026 (current)
+            soup.select_one("[data-testid='advertiser-name']") or
+            soup.select_one("[data-testid='owner-name']") or
+            soup.select_one("[data-cy='agency-card-title']") or
+            # 2024-2025
             soup.select_one("[data-cy='agency-name']") or
             soup.select_one("[data-cy='seller-name']") or
+            # Class-based fallbacks (multiple naming conventions)
+            soup.select_one("[class*='AdvertiserName']") or
             soup.select_one("[class*='ContactName']") or
             soup.select_one("[class*='contact-name']") or
-            soup.select_one("[class*='seller-name']")
+            soup.select_one("[class*='seller-name']") or
+            soup.select_one("[class*='owner-name']") or
+            # Generic h2/h3 in contact card
+            soup.select_one("aside h2, aside h3, [class*='Contact'] h2, [class*='Contact'] h3")
         )
         if name_el:
             name = name_el.get_text(strip=True)
-            if name and len(name) > 2:
+            if name and 2 < len(name) < 80:
                 result["contact_name"] = name
+
+        # Fallback: JSON-LD structured data (often has author or seller name)
+        if not result.get("contact_name"):
+            try:
+                import json as _json
+                for script in soup.select("script[type='application/ld+json']"):
+                    data = _json.loads(script.string or "{}")
+                    if isinstance(data, dict):
+                        # Try various common JSON-LD paths
+                        author = data.get("author") or data.get("seller") or data.get("provider")
+                        if isinstance(author, dict):
+                            n = author.get("name")
+                            if n and 2 < len(n) < 80:
+                                result["contact_name"] = n
+                                break
+                        elif isinstance(author, str) and 2 < len(author) < 80:
+                            result["contact_name"] = author
+                            break
+            except Exception:
+                pass
+
+        # Fallback: meta tags (sometimes in og:author)
+        if not result.get("contact_name"):
+            meta = soup.select_one("meta[name='author']") or soup.select_one("meta[property='og:author']")
+            if meta and meta.get("content"):
+                n = meta["content"].strip()
+                if 2 < len(n) < 80:
+                    result["contact_name"] = n
 
         desc_el = (
             soup.select_one("[data-cy='advert-description']") or
@@ -616,6 +656,21 @@ class ImovirtualScraper(BaseScraper):
         if owner_type_raw == "fsbo":
             agency_name = None
 
+        # ── First image · Sprint Engine B (visual dedup via pHash) ───────────
+        image_url = None
+        # Imovirtual lazy-loads images: first try the actual src, then data-src,
+        # then srcset (extracts the smallest available rendition).
+        img_el = card.select_one("img[src], img[data-src], picture source[srcset]")
+        if img_el:
+            image_url = (
+                img_el.get("src")
+                or img_el.get("data-src")
+                or (img_el.get("srcset", "").split()[0] if img_el.get("srcset") else None)
+            )
+            # Skip placeholder/spinner gifs
+            if image_url and ("data:image" in image_url or image_url.endswith(".svg")):
+                image_url = None
+
         return {
             "external_id":   external_id,
             "url":           url,
@@ -628,7 +683,7 @@ class ImovirtualScraper(BaseScraper):
             "agency_name":   agency_name,
             "owner_type_raw": owner_type_raw,
             "is_owner":      is_owner,
-            "image_url":     None,
+            "image_url":     image_url,
             "zone_query":    zone,
             "description":   None,
             "contact_name":  None,
