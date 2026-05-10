@@ -477,6 +477,23 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
     # Sprint Owner Tier · classify how confident we are this is the actual owner
     owner_tier = _classify_owner_tier(lead)
 
+    # Sprint Pre-call Briefing · only built for Tier A/B (cheap to skip the rest)
+    if owner_tier in ("A", "B"):
+        try:
+            from pipeline.precall_briefing import build_briefing
+            _br = build_briefing(lead)
+            briefing_text = _br["text"]
+            opening_line  = _br["opening"]
+            commission_eur = _br["commission_eur"]
+        except Exception:
+            briefing_text = ""
+            opening_line  = ""
+            commission_eur = 0
+    else:
+        briefing_text = ""
+        opening_line  = ""
+        commission_eur = 0
+
     row = {
         "rank":          rank,
         "score":         lead.score or 0,
@@ -501,6 +518,9 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
         "url":           url,
         "dias_mercado":  lead.days_on_market or 0,
         "data_captacao": lead.first_seen_at.strftime("%d/%m/%Y") if lead.first_seen_at else "—",
+        "briefing":      briefing_text or "—",
+        "opening":       opening_line or "—",
+        "comissao_est":  f"€{commission_eur:,.0f}".replace(",", " ") if commission_eur else "—",
         # internal fields for filtering/sorting — not written to sheet
         "_phone_type":   pt,
         "_lead_id":      lead.id,
@@ -957,6 +977,9 @@ def export_commercial_xlsx(
         ("URL Anúncio",  "url",          18),
         ("Dias Merc.",   "dias_mercado",  9),
         ("Captado em",   "data_captacao",12),
+        ("Comissão est.","comissao_est", 14),
+        ("Opening",      "opening",      60),
+        ("Briefing",     "briefing",     80),
     ]
 
     def _write_sheet(ws, rows: list[dict], title: str, tab_color: str) -> None:
@@ -1052,11 +1075,15 @@ def export_commercial_xlsx(
                 elif key == "dias_mercado":
                     cell.font      = d_font
                     cell.alignment = r_align
+                elif key in ("briefing", "opening"):
+                    cell.font      = d_font
+                    cell.alignment = wrap_al
                 else:
                     cell.font      = d_font
                     cell.alignment = l_align
 
-            ws.row_dimensions[ri].height = 18
+            # Tier A/B leads have a multi-line briefing — taller row so it shows
+            ws.row_dimensions[ri].height = 110 if row.get("briefing") and row["briefing"] != "—" else 18
 
         # Auto-filter on header row
         ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUMNS))}1"
