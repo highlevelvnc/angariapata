@@ -44,17 +44,35 @@ from typing import Optional
 
 # ── Classification sets ───────────────────────────────────────────────────────
 
-# Standard Portuguese mobile prefixes (first 2 digits of national number)
-# MEO: 91x | Vodafone: 96x | NOS: 93x | NOWO/others: 92x, 90x
+# Standard Portuguese mobile prefixes per ANACOM 2024 numbering plan.
+# MEO: 91x | Vodafone: 92x, 96x | NOS: 93x
+# IMPORTANT: 90/94/95/97/98/99 are NOT assigned PT mobile prefixes —
+# they're either OLX/Imovirtual relay/proxy numbers OR foreign forwarding.
+# Calling them gives an anonymous voicemail, NOT the real owner.
+# Sprint REAL OWNER 2026-05-10 · removed 90 from mobile (was misclassified).
 _MOBILE_PREFIXES: frozenset[str] = frozenset([
-    "90", "91", "92", "93", "96",
+    "91", "92", "93", "96",
 ])
 
-# OLX Portugal phone-masking service and general VoIP relay ranges.
-# These numbers RING through to the real phone but are not direct owner numbers.
-# Prefix 6xx is not assigned to standard PT consumers by ANACOM.
+# Relay/proxy ranges. OLX masking + VoIP forwarding + non-assigned ranges.
+# All these RING somewhere but NOT directly to the seller's phone — caller
+# hears an anonymous voicemail or "número não atribuído".
+#
+# Per ANACOM 2024:
+#   21x = Lisboa, 22x = Porto, 23x = Coimbra/Aveiro, 24x = Castelo Branco/Centro,
+#   25x = Norte, 26x = Madeira, 27x = Bragança, 28x = Algarve, 29x = Açores
+#   20x = NOT a geographic landline — non-geographic / VoIP services →
+#         OLX/Imovirtual heavily use these as relay numbers (729 in our DB!)
+#   91x/92x/93x/96x = real PT mobile
+#   90x/94x/95x/97x/98x/99x = NOT real mobile → OLX/Imovirtual relay
+#   60x-69x = NOT assigned to consumers → relay
 _RELAY_PREFIXES: frozenset[str] = frozenset([
+    # 20X · NOT a geographic landline area code in PT — used as OLX relay
+    "20",
+    # 6X · OLX historical relay
     "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
+    # 9X non-mobile · OLX modern relay (90X/94X/95X/97X/98X/99X)
+    "90", "94", "95", "97", "98", "99",
 ])
 
 # Premium / special services — never call, strip from pipeline

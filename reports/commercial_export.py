@@ -555,6 +555,90 @@ def generate_expanded_list(
     return rows
 
 
+# ── Sprint REAL OWNER · Lista Alternativa ────────────────────────────────────
+
+def generate_alternative_list(
+    excluded_phones: set[str],
+    score_min: int | None = None,
+    zones: list[str] | None = None,
+    limit: int = 200,
+) -> list[dict]:
+    """
+    Build the Lista Alternativa.
+
+    Leads with a relay/unknown phone (NOT directly callable) but with a
+    valid listing URL — Susana can contact via the portal's internal
+    messaging system. Honest disclosure: these are NOT real owner phones.
+
+    Criteria:
+      • score ≥ 30 (broader than Premium/Expandida)
+      • phone_type IN (relay, unknown) OR no phone
+      • has a URL (so Susana can reach via portal)
+      • not in Premium/Expandida already
+      • zone in target_zones
+    """
+    from sqlalchemy import select, or_
+
+    target_zones = zones or settings.zones
+    min_score    = score_min if score_min is not None else 30
+
+    with get_db() as db:
+        q = (
+            select(Lead)
+            .where(
+                Lead.archived == False,                       # noqa: E712
+                Lead.is_demo  == False,                       # noqa: E712
+                Lead.score >= min_score,
+                (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
+                Lead.zone.in_(target_zones),
+                or_(
+                    Lead.phone_type.in_(("relay", "unknown", "invalid")),
+                    Lead.phone_type.is_(None),
+                    Lead.contact_phone.is_(None),
+                    Lead.contact_phone == "",
+                ),
+            )
+            .where(Lead.lead_type.notin_(("agency_listing",)))
+            .order_by(Lead.score.desc())
+            .limit(limit * 3)
+        )
+        leads = db.execute(q).scalars().all()
+
+    rows: list[dict] = []
+    seen: set[str] = set()
+    for lead in leads:
+        # Skip if phone was already shipped in a previous list
+        if lead.contact_phone and lead.contact_phone in excluded_phones:
+            continue
+        # Need a way to contact — listing URL or email
+        url = _get_url(lead.sources_json or "[]")
+        if not url and not lead.contact_email:
+            continue
+        # Cheap dedup by URL
+        if url in seen:
+            continue
+        seen.add(url)
+
+        row = _lead_to_row(lead, rank=len(rows) + 1)
+        # Mark explicitly: phone is NOT a real owner number
+        ph_t = (lead.phone_type or "—")
+        row["telefone"] = (
+            "📭 sem telemóvel directo"
+            if (not lead.contact_phone) else
+            f"⚠ {lead.contact_phone}  (relay/proxy · não chega ao dono)"
+        )
+        row["mensagem_wa"] = ""    # blank — no real phone to message
+        row["whatsapp"]    = ""
+        # Highlight URL as the contact channel
+        row["url"] = url
+        rows.append(row)
+
+        if len(rows) >= limit:
+            break
+
+    return rows
+
+
 # ── Executive summary ─────────────────────────────────────────────────────────
 
 def build_executive_summary(
@@ -682,6 +766,7 @@ def export_commercial_xlsx(
     expanded: list[dict],
     summary:  dict,
     output_path: str,
+    alternative: list[dict] | None = None,
 ) -> str:
     """
     Generate a single client-ready XLSX with three sheets.
@@ -859,7 +944,14 @@ def export_commercial_xlsx(
     ws_expanded = wb.create_sheet()
     _write_sheet(ws_expanded, expanded, "Lista Expandida", C["expanded_tab"])
 
-    # ── Sheet 3: Resumo Executivo ─────────────────────────────────────────────
+    # ── Sheet 3: Lista Alternativa (Sprint REAL OWNER) ────────────────────────
+    # Leads SEM phone real (relay/proxy/none), contactáveis via portal URL.
+    # Susana liga via mensagem interna do OLX/Imovirtual em vez de telefone.
+    if alternative:
+        ws_alt = wb.create_sheet()
+        _write_sheet(ws_alt, alternative, "Lista Alternativa", "F0AD4E")  # warning amber
+
+    # ── Sheet 4: Resumo Executivo ─────────────────────────────────────────────
     ws_sum = wb.create_sheet("Resumo Executivo")
     ws_sum.sheet_properties.tabColor = C["summary_tab"]
 
@@ -1011,7 +1103,18 @@ def run_commercial_export(
         limit=expanded_limit,
     )
 
+    # Sprint REAL OWNER · Lista Alternativa (sem phone real, contactáveis via portal)
+    expanded_phones = {r["telefone"] for r in expanded if r.get("telefone")}
+    log.info("[commercial] Building Lista Alternativa (relay/no-phone leads)…")
+    alternative = generate_alternative_list(
+        excluded_phones=premium_phones | expanded_phones,
+        zones=zones,
+        limit=200,
+    )
+    log.info("[commercial] Lista Alternativa: {n} leads", n=len(alternative))
+
     summary = build_executive_summary(premium, expanded)
+    summary["alternative_count"] = len(alternative)
 
     log.info(
         "[commercial] Summary — Premium: {p} | Expanded: {e} | "
@@ -1025,7 +1128,7 @@ def run_commercial_export(
     if fmt in ("xlsx", "both"):
         xlsx_path = str(out_dir / f"leads_comercial_{ts}.xlsx")
         try:
-            export_commercial_xlsx(premium, expanded, summary, xlsx_path)
+            export_commercial_xlsx(premium, expanded, summary, xlsx_path, alternative=alternative)
             files["xlsx"] = xlsx_path
         except ImportError as exc:
             log.warning("XLSX export skipped: {e}", e=exc)

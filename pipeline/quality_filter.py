@@ -202,7 +202,15 @@ def flag_suspicious(min_severity: int = 2) -> dict:
 # Portugal mobile prefixes (real, after +351 country code).
 # Source: ANACOM 2024 numbering plan.
 _PT_MOBILE_PREFIXES = ("91", "92", "93", "96")
+# Real geographic landlines: 21=Lisboa, 22=Porto, 23..29=outras regiões.
+# 20 NÃO é landline real PT — é relay/VoIP usado por OLX/Imovirtual.
 _PT_LANDLINE_PREFIXES = ("21", "22", "23", "24", "25", "26", "27", "28", "29")
+# Relay/proxy/non-direct: 20X (NOT landline), 6X, 9X-non-mobile.
+_PT_RELAY_PREFIXES = (
+    "20",
+    "60", "61", "62", "63", "64", "65", "66", "67", "68", "69",
+    "90", "94", "95", "97", "98", "99",
+)
 
 def validate_phones() -> dict:
     """
@@ -249,20 +257,18 @@ def validate_phones() -> dict:
                 continue
 
             prefix2 = core[:2]
-            first  = core[0]
-            if prefix2 in _PT_MOBILE_PREFIXES:
+            # Order matters: check relay BEFORE landline (20X falls in both).
+            if prefix2 in _PT_RELAY_PREFIXES:
+                # Anonymous proxy: 20X (non-geographic / VoIP),
+                # 6X (OLX historical), 9X-non-mobile (OLX modern).
+                lead.phone_type = "relay"
+                stats["relay"] += 1
+            elif prefix2 in _PT_MOBILE_PREFIXES:
                 lead.phone_type = "mobile"
                 stats["mobile"] += 1
             elif prefix2 in _PT_LANDLINE_PREFIXES:
                 lead.phone_type = "landline"
                 stats["landline"] += 1
-            elif first in ("9", "6"):
-                # Starts with 9 or 6 but NOT a real PT mobile prefix.
-                # OLX/Imovirtual relay/proxy numbers fall here:
-                # 90X, 95X, 97X, 98X, 99X, 60X, 66X, 67X, 99X, etc.
-                # Caller gets a "número anónimo" voicemail.
-                lead.phone_type = "relay"
-                stats["relay"] += 1
             else:
                 # Truly unknown / foreign / bogus prefix
                 lead.phone_type = "unknown"
