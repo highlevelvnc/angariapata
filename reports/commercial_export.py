@@ -212,6 +212,28 @@ def _motivation_badges(lead: Lead) -> list[str]:
         out.append(f"◔ MÉDIA CONFIANÇA {conf}")
     # baixa confiança: NÃO se exibe (silêncio = aviso)
 
+    # ⏰ Urgency + reason (Sprint NLP X)
+    try:
+        import json as _json
+        breakdown = _json.loads(lead.score_breakdown or "{}")
+    except Exception:
+        breakdown = {}
+    urg = breakdown.get("urgency", 0)
+    if urg >= 6:
+        out.append(f"⏰ URGÊNCIA {urg}/10")
+    reason_emoji = {
+        "EMIGRAÇÃO":   "🏃",
+        "DIVÓRCIO":    "💔",
+        "HERANÇA":     "📜",
+        "EXECUÇÃO":    "⚖️",
+        "REMODELAÇÃO": "🔨",
+        "INVESTIDOR":  "📈",
+        "INVESTIMENTO":"💼",
+    }
+    reason = breakdown.get("reason")
+    if reason and reason in reason_emoji:
+        out.append(f"{reason_emoji[reason]} {reason}")
+
     return out
 
 # ── Commercial insight — richer than generic insight ─────────────────────────

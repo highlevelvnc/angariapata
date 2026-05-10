@@ -712,6 +712,102 @@ def compute_confidence_scores() -> dict:
     return stats
 
 
+# ── Sprint NLP X · Sentiment + urgency analysis ──────────────────────
+
+# Patterns calibrated for PT-PT real estate listings.
+# Each rule contributes to either urgency (0-10) or to detected_reason.
+_NLP_URGENCY_PATTERNS = [
+    (re.compile(r"\b(urgent\w*)\b", re.IGNORECASE),                    3),
+    (re.compile(r"\b(precisamos? vender|tenho que vender)\b", re.IGNORECASE), 4),
+    (re.compile(r"\b(rapid\w+|j[áa] hoje|esta semana)\b", re.IGNORECASE), 2),
+    (re.compile(r"\b(aceito propostas?|negoci[áa]vel|negoci\w+)\b", re.IGNORECASE), 1),
+    (re.compile(r"\b(baixou|baixei|reduzido|desconto|grande oportunidade)\b", re.IGNORECASE), 2),
+    (re.compile(r"\b(emigr\w+|mud\w+ para|estrangeiro)\b", re.IGNORECASE),       3),
+    (re.compile(r"\b(divórci\w+|separa\w+)\b", re.IGNORECASE),                   3),
+    (re.compile(r"\b(her[aá]n[çc]a|herdeiro|partilha)\b", re.IGNORECASE),         3),
+    (re.compile(r"\b(penhora|execu\w+|hipoteca)\b", re.IGNORECASE),               4),
+]
+
+_NLP_REASON_PATTERNS = [
+    (re.compile(r"\b(emigra\w+|mud\w+ para|estrangeiro)\b", re.IGNORECASE),       "EMIGRAÇÃO"),
+    (re.compile(r"\b(divórci\w+|separa\w+)\b", re.IGNORECASE),                    "DIVÓRCIO"),
+    (re.compile(r"\b(her[aá]n[çc]a|herdeiro|partilha)\b", re.IGNORECASE),          "HERANÇA"),
+    (re.compile(r"\b(penhora|execu\w+|leil[ãa]o)\b", re.IGNORECASE),               "EXECUÇÃO"),
+    (re.compile(r"\b(remodel\w+|recupera\w+|restauro)\b", re.IGNORECASE),          "REMODELAÇÃO"),
+    (re.compile(r"\b(promot\w+|construtor|investidor)\b", re.IGNORECASE),          "INVESTIDOR"),
+    (re.compile(r"\b(oportunidade|investimento|rent[áa]vel)\b", re.IGNORECASE),    "INVESTIMENTO"),
+]
+
+
+def analyse_sentiment_urgency() -> dict:
+    """
+    Sprint NLP X · scores each lead's title+description for urgency (0-10)
+    and extracts a "reason for sale" tag if detectable. Stores results in
+    ``Lead.score_breakdown`` (JSON) and bumps `priority_flag` when urgency≥7.
+
+    The output drives:
+      - Badge "⏰ URGÊNCIA 8/10" (when score>=6)
+      - Badge "💔 DIVÓRCIO" / "🏃 EMIGRAÇÃO" / "📜 HERANÇA" (when reason detected)
+    """
+    import json as _json
+    stats = {
+        "considered": 0, "with_urgency": 0,
+        "high_urgency": 0, "with_reason": 0,
+        "by_reason": {},
+    }
+    with get_db() as db:
+        leads = (
+            db.query(Lead)
+            .filter(Lead.archived == False)              # noqa: E712
+            .all()
+        )
+        stats["considered"] = len(leads)
+
+        for lead in leads:
+            text = " ".join([lead.title or "", lead.description or ""])
+            if not text.strip():
+                continue
+
+            urgency = 0
+            for pat, weight in _NLP_URGENCY_PATTERNS:
+                if pat.search(text):
+                    urgency += weight
+            urgency = min(10, urgency)
+
+            reason = None
+            for pat, label in _NLP_REASON_PATTERNS:
+                if pat.search(text):
+                    reason = label
+                    stats["by_reason"][label] = stats["by_reason"].get(label, 0) + 1
+                    break
+
+            # Persist as JSON inside score_breakdown alongside other signals
+            try:
+                breakdown = _json.loads(lead.score_breakdown or "{}")
+            except Exception:
+                breakdown = {}
+            if urgency > 0:
+                breakdown["urgency"] = urgency
+                stats["with_urgency"] += 1
+            if reason:
+                breakdown["reason"] = reason
+                stats["with_reason"] += 1
+            lead.score_breakdown = _json.dumps(breakdown)
+
+            # High-urgency leads get priority_flag
+            if urgency >= 7 and not lead.priority_flag:
+                lead.priority_flag = True
+                stats["high_urgency"] += 1
+
+        db.commit()
+    log.info(
+        "[quality.nlp] considered={c} urgency+={u} high_urgency={h} reason+={r} by_reason={br}",
+        c=stats["considered"], u=stats["with_urgency"],
+        h=stats["high_urgency"], r=stats["with_reason"], br=stats["by_reason"],
+    )
+    return stats
+
+
 # ── CLI entry ────────────────────────────────────────────────────────
 
 def cli_quality_pass(consolidate: bool = True, guess_emails: bool = True) -> dict:
@@ -737,6 +833,7 @@ def cli_quality_pass(consolidate: bool = True, guess_emails: bool = True) -> dic
 
     email_stats   = validate_emails()
     susp_stats    = flag_suspicious(min_severity=2)
+    nlp_stats     = analyse_sentiment_urgency()
     conf_stats    = compute_confidence_scores()
     fresh_stats   = apply_freshness_penalty()
     log.info("═══ Quality pass end ═══")
@@ -748,6 +845,7 @@ def cli_quality_pass(consolidate: bool = True, guess_emails: bool = True) -> dic
         "email_guess":   guess_stats,
         "email_valid":   email_stats,
         "suspicious":    susp_stats,
+        "nlp":           nlp_stats,
         "confidence":    conf_stats,
         "freshness":     fresh_stats,
     }

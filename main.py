@@ -820,6 +820,30 @@ def trend_report(out: str, days: int):
     console.print(f"[green]✓ PDF saved → {path}[/green]")
 
 
+@cli.command(name="phone-ocr-sweep")
+@click.option("--limit", default=200, type=int, show_default=True,
+              help="Máximo de imagens a processar nesta passada")
+def phone_ocr_sweep(limit: int):
+    """Sprint NLP Y · OCR às imagens de leads sem phone para extrair números escondidos.
+
+    Alguns vendedores escondem o número dentro de uma imagem para defraudar
+    scrapers. Este comando faz tesseract OCR aos primeiros 200 listings com
+    image_url e sem contact_phone, extrai qualquer número PT que apareça,
+    e persiste no lead.
+
+    Requer: brew install tesseract && pip install pytesseract pillow
+    """
+    from utils.phone_ocr import ocr_sweep_missing_phones
+    console.print(f"[cyan]Phone OCR sweep · limit={limit}…[/cyan]")
+    r = ocr_sweep_missing_phones(limit=limit)
+    if not r["tesseract_available"]:
+        console.print("[red]✗ Tesseract não instalado.[/red] Corre:")
+        console.print("  [dim]brew install tesseract[/dim]")
+        console.print("  [dim]pip3 install pytesseract pillow[/dim]")
+        return
+    console.print(f"[green]✓ {r['phones_saved']} phones recuperados de {r['ocr_attempted']} imagens[/green]")
+
+
 @cli.command(name="quality-pass")
 @click.option("--min-occurrences", default=4, type=int, show_default=True,
               help="Phones em ≥N listings = flipper (downgrade para agency)")
