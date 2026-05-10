@@ -206,20 +206,21 @@ _PT_LANDLINE_PREFIXES = ("21", "22", "23", "24", "25", "26", "27", "28", "29")
 
 def validate_phones() -> dict:
     """
-    Sprint Integrity F · classify every phone by format + likely WhatsApp
-    presence. Updates ``Lead.phone_type`` precisely:
+    Sprint Integrity F · classify every phone by PT numbering plan:
 
-      mobile    → +351 9[1-3,6]X · likely on WhatsApp
-      landline  → +351 2X · agency switchboard, NOT on WhatsApp
-      relay    → OLX/Imovirtual relay numbers (already detected)
+      mobile    → +351 91/92/93/96 · real PT mobile (likely WhatsApp)
+      landline  → +351 21-29 · real PT landline (often agency switchboard)
+      relay     → +351 9X (other) / 6X / 99X · OLX/Imovirtual proxy numbers
+                 NOT the owner's real phone — caller hears "anónimo" message
       invalid   → wrong format, wrong country, malformed → cleared
 
     Phones marked invalid get ``contact_phone=NULL`` so the export pipeline
-    won't include them in the deliverable.
+    won't include them. Relay phones keep contact_phone but won't pass
+    the strict "REAL OWNER" filter in the export.
     """
     stats = {
         "checked": 0, "mobile": 0, "landline": 0,
-        "invalid_format": 0, "cleared": 0,
+        "relay": 0, "invalid_format": 0, "cleared": 0,
     }
     with get_db() as db:
         leads = (
@@ -247,15 +248,23 @@ def validate_phones() -> dict:
                 stats["cleared"] += 1
                 continue
 
-            prefix = core[:2]
-            if prefix in _PT_MOBILE_PREFIXES:
+            prefix2 = core[:2]
+            first  = core[0]
+            if prefix2 in _PT_MOBILE_PREFIXES:
                 lead.phone_type = "mobile"
                 stats["mobile"] += 1
-            elif prefix in _PT_LANDLINE_PREFIXES:
+            elif prefix2 in _PT_LANDLINE_PREFIXES:
                 lead.phone_type = "landline"
                 stats["landline"] += 1
+            elif first in ("9", "6"):
+                # Starts with 9 or 6 but NOT a real PT mobile prefix.
+                # OLX/Imovirtual relay/proxy numbers fall here:
+                # 90X, 95X, 97X, 98X, 99X, 60X, 66X, 67X, 99X, etc.
+                # Caller gets a "número anónimo" voicemail.
+                lead.phone_type = "relay"
+                stats["relay"] += 1
             else:
-                # Foreign mobile (e.g. +44 UK) or unknown PT prefix
+                # Truly unknown / foreign / bogus prefix
                 lead.phone_type = "unknown"
 
         db.commit()

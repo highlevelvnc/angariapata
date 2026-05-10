@@ -424,19 +424,17 @@ def generate_premium_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
-                # Sprint Quality C — exclude suspicious listings from Premium
+                # Sprint Quality C — exclude suspicious
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
+                # Sprint REAL OWNER 2026-05-10 · APENAS phones reais PT
+                # (mobile 91/92/93/96 ou landline 21-29). Exclui relay/proxy
+                # OLX (90X/95X/99X/66X) que dão voicemail anónimo.
+                Lead.phone_type.in_(("mobile", "landline")),
             )
-            # Sprint relax 2026-05-10 · após quality_filter agressivo, muitos
-            # leads válidos foram reclassificados como 'agency' (correctamente).
-            # Mas para o Premium queremos volume razoável + score já encoda
-            # qualidade. Por isso aceitamos qualquer owner_type EXCEPT
-            # explicit 'agency_listing' lead_type. As agências reais aparecem
-            # com badges visuais (sem 👤 PROPRIETÁRIO, com agency_name).
             .where(Lead.lead_type != "agency_listing")
             .where(Lead.zone.in_(target_zones))
             .order_by(Lead.score.desc())
-            .limit(limit * 5)   # buffer for dedup + landline filter
+            .limit(limit * 5)
         )
         leads = db.execute(q).scalars().all()
 
@@ -518,13 +516,10 @@ def generate_expanded_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
-                # Sprint Quality C — exclude suspicious listings from Premium
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
+                # Sprint REAL OWNER · Expandida também só com phones reais
+                Lead.phone_type.in_(("mobile", "landline")),
             )
-            # Sprint relax 2026-05-10 · após quality_filter, owner_type='agency'
-            # contém maioritariamente flippers detectados — mas o lead em si
-            # ainda pode ter telemóvel directo válido. Para a Expandida queremos
-            # volume amplo (~150) com menos restrições que Premium.
             .where(Lead.lead_type.notin_(("agency_listing",)))
             .where(Lead.zone.in_(target_zones))
             .order_by(Lead.score.desc())
