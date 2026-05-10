@@ -91,6 +91,59 @@ def _phone_uses_count(phone: str) -> int:
     return n
 
 
+# Corporate markers — if any appear in agency_name, treat it as a real agency
+# rather than a personal name leaked into the field.
+_CORP_MARKERS: tuple[str, ...] = (
+    "lda", "s.a", " sa", "sa ", "imobiliária", "imobiliaria", "imo ", "imo.",
+    "investimentos", "properties", "property", "consultora", "consultor",
+    "mediadora", "mediação", "mediacao", "vendedor profissional", "lisabona",
+    " group", "century", "remax", "re/max", " kw", "era ", "zome", "savills",
+    "engel", "sotheby", "predimed", "sociedade", "unipessoal", " ami",
+    "amplitude", "habivida", "knight", "real estate", "realestate",
+    "patabrava", "construções", "construcoes", "investments", "holding",
+)
+_PERSONAL_NAME_RE = re.compile(r"^[A-Za-zÀ-ÿ' -]{2,40}$")
+
+
+def _is_personal_name(value: str) -> bool:
+    """
+    Return True if `value` looks like a personal name (e.g. "Maria",
+    "Ana Sousa", "Artur Santos") rather than a corporate / agency name.
+
+    Used to demote false-positive Tier C leads where the seller's first
+    name was extracted into agency_name during scraping.
+    """
+    v = (value or "").strip()
+    if not v:
+        return False
+    low = v.lower()
+    # Fast-reject digits, parens, slashes, ampersand — agencies / flipper tags
+    if any(ch.isdigit() for ch in v):
+        return False
+    if any(ch in v for ch in "()[]/&@|"):
+        return False
+    if any(m in low for m in _CORP_MARKERS):
+        return False
+    # Personal names: 1-3 tokens, only letters/spaces/'/-, total ≤ 40 chars
+    tokens = v.split()
+    if not (1 <= len(tokens) <= 3):
+        return False
+    return bool(_PERSONAL_NAME_RE.match(v))
+
+
+def _effective_agency_name(lead: Lead) -> str:
+    """
+    Return agency_name only if it really looks corporate. Personal names
+    leaked into the field (e.g. "Maria", "Marco", "Ana Sousa") return "".
+    """
+    raw = (lead.agency_name or "").strip()
+    if not raw:
+        return ""
+    if _is_personal_name(raw):
+        return ""
+    return raw
+
+
 def _classify_owner_tier(lead: Lead) -> str:
     """
     Classify how confident we are that this phone is THE OWNER.
@@ -104,9 +157,17 @@ def _classify_owner_tier(lead: Lead) -> str:
     """
     pt   = (lead.phone_type or "").lower()
     is_o = bool(lead.is_owner)
-    ag   = (lead.agency_name or "").strip()
+    ag   = _effective_agency_name(lead)
     nm   = (lead.contact_name or "").strip()
-    ot   = (lead.owner_type or "").lower()
+    # If agency_name was actually a personal name, treat lead as FSBO-leaning
+    # for the purposes of this classifier — fixes the Tier C false-positives
+    # where scrapers leaked first names ("Maria", "Marco") into agency_name.
+    if not ag and (lead.agency_name or "").strip():
+        is_o = True
+        ot_override = "fsbo"
+    else:
+        ot_override = None
+    ot   = ot_override or (lead.owner_type or "").lower()
     n_uses = _phone_uses_count(lead.contact_phone or "")
 
     # Hard reject: landline in 4+ listings is switchboard
