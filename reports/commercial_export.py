@@ -180,6 +180,20 @@ def _classify_owner_tier(lead: Lead) -> str:
         return "B"
     if pt == "mobile" and ag:
         return "C"
+    # Mobile flagged as agency without a corp name — treat as flipper/agent
+    # disguised. ≥3 reuses = switchboard E, ≤2 = weak agency C.
+    if pt == "mobile" and ot == "agency" and not ag:
+        return "E" if n_uses >= 3 else "C"
+    # Mobile owner with unknown owner_type but ≤3 uses → likely owner (B)
+    if pt == "mobile" and is_o and ot in ("unknown", "") and n_uses <= 3:
+        return "B"
+    # Relay numbers (OLX-style) follow the same logic as mobile but capped
+    if pt == "relay" and is_o and ot == "fsbo" and not ag and n_uses <= 2:
+        return "B"
+    if pt == "relay" and (ag or n_uses >= 4):
+        return "E"
+    if pt == "relay":
+        return "D"
     if pt == "landline" and not ag and n_uses <= 2:
         return "D"
     if pt == "landline" and (ag or n_uses >= 3):
