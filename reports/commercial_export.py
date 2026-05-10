@@ -91,18 +91,99 @@ def _phone_uses_count(phone: str) -> int:
     return n
 
 
-# Corporate markers — if any appear in agency_name, treat it as a real agency
-# rather than a personal name leaked into the field.
+# Substring markers — match anywhere in the lowercased name.
 _CORP_MARKERS: tuple[str, ...] = (
-    "lda", "s.a", " sa", "sa ", "imobiliária", "imobiliaria", "imo ", "imo.",
-    "investimentos", "properties", "property", "consultora", "consultor",
-    "mediadora", "mediação", "mediacao", "vendedor profissional", "lisabona",
-    " group", "century", "remax", "re/max", " kw", "era ", "zome", "savills",
-    "engel", "sotheby", "predimed", "sociedade", "unipessoal", " ami",
-    "amplitude", "habivida", "knight", "real estate", "realestate",
-    "patabrava", "construções", "construcoes", "investments", "holding",
+    "lda", "s.a", "imobiliária", "imobiliaria", "investimentos",
+    "properties", "property", "consultora", "consultor",
+    "mediadora", "mediação", "mediacao", "vendedor profissional",
+    "lisabona", "century", "remax", "re/max", "savills", "engel",
+    "sotheby", "predimed", "sociedade", "unipessoal", "amplitude",
+    "habivida", "knight", "real estate", "realestate", "patabrava",
+    "construções", "construcoes", "investments", "holding", "group",
 )
+# Whole-token markers — match a token exactly (case-insensitive).
+# These would generate false positives if matched as substrings (e.g. "kw"
+# would match "Akwa", "iad" would match "ciada"). Matching the token alone
+# catches "KW PRO", "IAD Portugal", "Casas ERA", etc. without false hits.
+_CORP_TOKENS: frozenset[str] = frozenset({
+    "kw", "iad", "era", "zome", "ami", "sa", "imo", "casas",
+    "imoveis", "imóveis", "predial", "predior", "mediação",
+    # Country/region tokens used as agency suffixes ("Homebook Portugal",
+    # "Casas Portugal", "Group HBC"). Real PT people are not surnamed Portugal.
+    "portugal", "brasil", "lisboa", "porto",
+    # Generic agency suffixes
+    "lda", "unipessoal", "pro", "team", "homes", "house",
+})
 _PERSONAL_NAME_RE = re.compile(r"^[A-Za-zÀ-ÿ' -]{2,40}$")
+
+# Whitelist of common Portuguese first names (M+F). When the first token of a
+# value is in this set, we treat the whole value as a personal name even if
+# subsequent tokens are unfamiliar surnames. This is the strongest signal —
+# stronger than corporate-marker detection which is necessarily a blacklist.
+_PT_FIRST_NAMES: frozenset[str] = frozenset({
+    # Top 200 PT first names (mix M/F, simplified)
+    "ana","maria","joão","joao","jose","josé","manuel","antonio","antónio",
+    "francisco","carlos","paulo","pedro","luis","luís","miguel","rui",
+    "fernando","ricardo","jorge","rita","sofia","catarina","ines","inês",
+    "marta","beatriz","mariana","leonor","margarida","filipa","raquel",
+    "patricia","patrícia","sara","helena","cristina","susana","alexandra",
+    "isabel","teresa","fatima","fátima","graca","graça","ricarda",
+    "tiago","bruno","andre","andré","nuno","diogo","filipe","goncalo",
+    "gonçalo","artur","afonso","duarte","henrique","hugo","ivan","joel",
+    "leonardo","luciano","lucas","marco","marcos","martim","mauricio",
+    "octavio","octávio","oliveira","raul","rodrigo","ruben","rúben",
+    "samuel","sebastiao","sebastião","sergio","sérgio","simao","simão",
+    "tomas","tomás","valter","vasco","vicente","vitor","vítor","xavier",
+    "alberto","alfredo","alvaro","álvaro","angelo","ângelo","armando",
+    "augusto","aurelio","aurélio","bernardo","cesar","césar","claudio",
+    "cláudio","daniel","david","dinis","domingos","edgar","eduardo",
+    "elisio","emanuel","ernesto","estevao","estêvão","fabio","fábio",
+    "felisberto","fernao","fernão","gabriel","gaspar","geraldo","gilberto",
+    "guilherme","ilidio","jaime","jacinto","joaquim","leandro","leonel",
+    "loureiro","mario","mário","matias","mauro","mateus","nelson","nicolau",
+    "norberto","octaviano","olegario","olegário","paulino","quintino",
+    "raimundo","ramiro","reinaldo","renato","romeo","romeu","ronaldo",
+    "rosario","rosário","salvador","santiago","saul","silvestre","silvio",
+    "sílvio","teodoro","teófilo","timoteo","timóteo","tobias","ubaldo",
+    "urbano","valdemar","valentim","veloso","virgilio","virgílio",
+    "wilson","ze","zé","zeferino",
+    # F
+    "alice","aline","alina","amalia","amanda","andreia","angela","ângela",
+    "antonia","antónia","aurora","barbara","bárbara","branca","brigida",
+    "brígida","camila","carla","carlota","carmen","carolina","celeste",
+    "celia","célia","cidalia","cidália","clara","clarisse","claudia",
+    "cláudia","cristiana","daniela","debora","débora","diana","dora",
+    "dulce","edite","elena","eliana","elsa","elvira","emilia","emília",
+    "estela","ester","etelvina","eulalia","eulália","eunice","eva",
+    "fabiola","fabíola","fernanda","filomena","flavia","flávia","floriana",
+    "francesca","gabriela","gisela","glória","gloria","guilhermina",
+    "iara","ida","idalina","ilda","ines","inês","irene","iris","íris",
+    "joana","julia","júlia","juliana","julieta","laura","leticia",
+    "letícia","lia","liana","liliana","linda","lucia","lúcia","luciana",
+    "luisa","luísa","luiza","madalena","manuela","matilde","melania",
+    "melânia","melanie","melissa","michelle","milena","miriam","mónica",
+    "monica","natacha","natalia","natália","nina","noemia","noémia",
+    "nora","odete","olga","palmira","paula","pilar","preciosa","raquel",
+    "renata","romana","rosa","rosalia","rosália","rosana","rosario",
+    "rute","sandra","silvana","silvia","sílvia","sonia","sónia","stela",
+    "tamara","tania","tânia","telma","tina","valentina","vanda","vanessa",
+    "vera","veronica","verónica","violeta","virgínia","virginia","vitoria",
+    "vitória","yara","zélia","zelia","zita",
+    # Brazilian/lusophone variants common in PT-PT
+    "alex","camelia","camélia","alinne","camilla","fabricio","fabrício",
+    "jorge","kelly","wagner","adilson","cleber","reginaldo","valdir",
+    "rosanilopes","catarinagaio",  # leaked usernames already accepted by their first part
+})
+
+# Portal UI noise that leaks into contact_name fields when the scraper picks
+# up button labels or section headers instead of an actual seller name.
+_NAME_NOISE: frozenset[str] = frozenset({
+    "adicionados hoje", "adicionado hoje", "adicionados ontem",
+    "vendedor profissional", "vendedor", "particular", "particulares",
+    "anuncio", "anúncio", "anuncios", "anúncios", "ver telefone",
+    "ver número", "contactar", "novo", "nova", "ontem", "hoje",
+    "destaque", "destaques", "premium",
+})
 
 
 def _is_personal_name(value: str) -> bool:
@@ -117,6 +198,9 @@ def _is_personal_name(value: str) -> bool:
     if not v:
         return False
     low = v.lower()
+    # Reject portal UI noise like "Adicionados hoje", "Vendedor", etc.
+    if low in _NAME_NOISE:
+        return False
     # Fast-reject digits, parens, slashes, ampersand — agencies / flipper tags
     if any(ch.isdigit() for ch in v):
         return False
@@ -128,7 +212,31 @@ def _is_personal_name(value: str) -> bool:
     tokens = v.split()
     if not (1 <= len(tokens) <= 3):
         return False
-    return bool(_PERSONAL_NAME_RE.match(v))
+    # Reject if ANY token is a known corporate brand/keyword
+    if any(t.lower().rstrip(".,") in _CORP_TOKENS for t in tokens):
+        return False
+    if not _PERSONAL_NAME_RE.match(v):
+        return False
+    # Single token: REQUIRES dict match (no surname to disambiguate).
+    # Two/three tokens: dict match OR all tokens proper-cased lowercase letters
+    # (covers "Cristina Sousa", "Eddy Costa" — names we don't have in our dict
+    # but pattern-match as personal). The corporate-marker filter above already
+    # rejected most agency strings.
+    first = tokens[0].lower().rstrip(".,'-")
+    if first in _PT_FIRST_NAMES:
+        return True
+    if len(tokens) == 1:
+        return False
+    # Multi-token fallback: every token starts uppercase and the rest is
+    # lowercase letters. Rejects "KW PRO", "IAD Portugal", "Group HBC"
+    # (have all-caps tokens that aren't title-cased), "Oferta privada"
+    # (second token lowercase). Accepts "Cristina Sousa", "Eddy Costa".
+    for t in tokens:
+        if not t[0].isupper():
+            return False
+        if len(t) > 1 and not t[1:].islower():
+            return False
+    return True
 
 
 def _effective_agency_name(lead: Lead) -> str:
@@ -1110,12 +1218,34 @@ def export_commercial_xlsx(
     ws_expanded = wb.create_sheet()
     _write_sheet(ws_expanded, expanded, "Lista Expandida", C["expanded_tab"])
 
-    # ── Sheet 3: Lista Alternativa (Sprint REAL OWNER) ────────────────────────
+    # ── Sheet 3: ⚠ SEM TELEFONE (Sprint REAL OWNER) ──────────────────────────
     # Leads SEM phone real (relay/proxy/none), contactáveis via portal URL.
     # Susana liga via mensagem interna do OLX/Imovirtual em vez de telefone.
     if alternative:
         ws_alt = wb.create_sheet()
-        _write_sheet(ws_alt, alternative, "Lista Alternativa", "F0AD4E")  # warning amber
+        _write_sheet(ws_alt, alternative, "⚠ SEM TELEFONE", "F0AD4E")  # warning amber
+        # Insert a banner row at top explaining the sheet
+        ws_alt.insert_rows(1, amount=2)
+        banner = ws_alt.cell(row=1, column=1,
+            value="⚠  ATENÇÃO: ESTES LEADS NÃO TÊM TELEFONE REAL")
+        banner.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+        banner.fill = PatternFill("solid", fgColor="C62828")
+        banner.alignment = Alignment(horizontal="center", vertical="center")
+        ws_alt.merge_cells(start_row=1, start_column=1,
+                            end_row=1, end_column=len(COLUMNS))
+        ws_alt.row_dimensions[1].height = 28
+
+        sub = ws_alt.cell(row=2, column=1,
+            value="O número mostrado é um relay/proxy do portal — NÃO é o número do dono. "
+                  "Para contactar: clica no URL do anúncio e envia mensagem interna no OLX/Imovirtual. "
+                  "NÃO ligar — o relay não atende ou redirecciona para sistema automático.")
+        sub.font = Font(name="Calibri", italic=True, size=10, color="C62828")
+        sub.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws_alt.merge_cells(start_row=2, start_column=1,
+                            end_row=2, end_column=len(COLUMNS))
+        ws_alt.row_dimensions[2].height = 36
+        # Move freeze pane down so banner stays visible
+        ws_alt.freeze_panes = "A4"
 
     # ── Sheet 4: Resumo Executivo ─────────────────────────────────────────────
     ws_sum = wb.create_sheet("Resumo Executivo")

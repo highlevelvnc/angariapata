@@ -252,8 +252,17 @@ def refresh_map_data():
                 Lead.contact_phone.isnot(None),
                 Lead.score_label.in_(["HOT", "WARM"]),
                 Lead.archived == False,
+                # Mobile + landline only — relay/proxy numbers don't reach the
+                # owner directly so they should NOT appear with the "ligar agora"
+                # affordance. Susana contacts those via portal message instead.
+                Lead.phone_type.in_(["mobile", "landline"]),
             )
-            .order_by(Lead.score.desc(), Lead.price.desc())
+            # Mobile first (real owner phone), then landline. Highest score wins.
+            .order_by(
+                (Lead.phone_type == "mobile").desc(),
+                Lead.score.desc(),
+                Lead.price.desc(),
+            )
             .limit(800)
             .all()
         )
@@ -272,6 +281,9 @@ def refresh_map_data():
                 "t": l.typology or l.property_type or "—",
                 "p": float(l.price) if l.price else 0,
                 "ph": l.contact_phone, "wa": link,
+                # Phone-type flag — frontend can show 📱 vs 📞 and gate the
+                # "WhatsApp" button to mobiles only.
+                "pt": l.phone_type or "unknown",
                 "b": badges, "o": bool(l.is_owner) and not l.agency_name,
                 "ti": (l.title or "")[:70],
             })
