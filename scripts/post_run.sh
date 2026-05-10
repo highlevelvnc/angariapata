@@ -136,5 +136,59 @@ PRÓXIMOS PASSOS
   2. Reúne com Susana terça às 11h
 EOF
 
+# ── Step 7 · Idealista bonus pass (post-everything) ──────────────────
+# Idealista uses DataDome enterprise. Runs LAST so failures don't impact
+# the main delivery. If it works, we re-process + re-export to include
+# the Idealista FSBO listings. If DataDome blocks, we skip silently.
+say "→ 7/7 Idealista bonus pass (FSBO-only, after main delivery)…"
+
+# Snapshot raw_listings before
+RAW_BEFORE_IDEA=$(sqlite3 data/patabrava.db "SELECT COUNT(*) FROM raw_listings WHERE source='idealista';" 2>/dev/null || echo 0)
+
+# Force-run Idealista regardless of is_active flag
+IDEALISTA_FSBO_ONLY=1 python3 main.py scrape --sources idealista >> "$LOG" 2>&1 || say "  ⚠ Idealista scrape falhou (DataDome?) — continuamos"
+
+RAW_AFTER_IDEA=$(sqlite3 data/patabrava.db "SELECT COUNT(*) FROM raw_listings WHERE source='idealista';" 2>/dev/null || echo 0)
+IDEA_NEW=$((RAW_AFTER_IDEA - RAW_BEFORE_IDEA))
+
+if [ "$IDEA_NEW" -gt 0 ]; then
+  say "  ✓ Idealista trouxe $IDEA_NEW novos listings"
+  # Process the new Idealista raw_listings
+  python3 main.py process --source idealista --limit 5000 >> "$LOG" 2>&1
+  # Re-run quality + score + export to include Idealista data
+  python3 -c "from pipeline.quality_filter import cli_quality_pass; cli_quality_pass()" >> "$LOG" 2>&1
+  python3 main.py score >> "$LOG" 2>&1
+  python3 main.py export-commercial \
+    --premium-limit 50 --expanded-limit 65 \
+    --output-dir exports/ --format xlsx >> "$LOG" 2>&1
+  python3 scripts/refresh_demo.py >> "$LOG" 2>&1
+
+  # Re-sync to ptbp + force a second push
+  cp exports/demo_patabrava.html "$PROP_DIR/index.html" 2>>"$LOG" || true
+  cp exports/mapa-data.json      "$PROP_DIR/" 2>>"$LOG" || true
+  LATEST_XLSX2=$(ls -t exports/leads_comercial_*.xlsx 2>/dev/null | head -1)
+  if [ -n "$LATEST_XLSX2" ] && [ "$LATEST_XLSX2" != "$LATEST_XLSX" ]; then
+    rm -f "$PROP_DIR"/leads_comercial_*.xlsx 2>/dev/null
+    cp "$LATEST_XLSX2" "$PROP_DIR/"
+    NEW_NAME2=$(basename "$LATEST_XLSX2")
+    sed -i '' "s|leads_comercial_[0-9_]*\.xlsx|$NEW_NAME2|g" "$PROP_DIR/index.html" 2>>"$LOG" || true
+  fi
+  cd "$PROP_DIR"
+  if [ -n "$(git status --porcelain)" ]; then
+    git add -A >> "$LOG" 2>&1
+    GIT_AUTHOR_NAME="highlevelvnc" GIT_AUTHOR_EMAIL="vnc.oli@gmail.com" \
+    GIT_COMMITTER_NAME="highlevelvnc" GIT_COMMITTER_EMAIL="vnc.oli@gmail.com" \
+      git commit -m "Refresh nocturno · +Idealista FSBO ($IDEA_NEW listings)" >> "$LOG" 2>&1 \
+      && git push >> "$LOG" 2>&1 \
+      && say "  ✓ pushed Idealista delta to GitHub" \
+      || say "  ⚠ push do delta Idealista falhou"
+  fi
+  cd - > /dev/null
+  echo "IDEALISTA_RESULT=success ($IDEA_NEW listings)" >> "$LOG"
+else
+  say "  · Idealista 0 listings (DataDome bloqueou OU já estava em delta-stop)"
+  echo "IDEALISTA_RESULT=blocked_or_empty" >> "$LOG"
+fi
+
 say "═══ Post-run complete ═══"
 say "Resumo da manhã: logs/MORNING_SUMMARY.txt"
