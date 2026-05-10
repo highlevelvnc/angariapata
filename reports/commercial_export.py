@@ -427,16 +427,13 @@ def generate_premium_list(
                 # Sprint Quality C — exclude suspicious listings from Premium
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
             )
-            .where(
-                or_(
-                    Lead.owner_type.in_(("fsbo", "unknown", "developer")),
-                    Lead.owner_type.is_(None),
-                )
-            )
-            .where(
-                Lead.lead_type.notin_(("agency_listing",))
-                if True else True
-            )
+            # Sprint relax 2026-05-10 · após quality_filter agressivo, muitos
+            # leads válidos foram reclassificados como 'agency' (correctamente).
+            # Mas para o Premium queremos volume razoável + score já encoda
+            # qualidade. Por isso aceitamos qualquer owner_type EXCEPT
+            # explicit 'agency_listing' lead_type. As agências reais aparecem
+            # com badges visuais (sem 👤 PROPRIETÁRIO, com agency_name).
+            .where(Lead.lead_type != "agency_listing")
             .where(Lead.zone.in_(target_zones))
             .order_by(Lead.score.desc())
             .limit(limit * 5)   # buffer for dedup + landline filter
@@ -524,12 +521,10 @@ def generate_expanded_list(
                 # Sprint Quality C — exclude suspicious listings from Premium
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
             )
-            .where(
-                or_(
-                    Lead.owner_type != "agency",
-                    Lead.owner_type.is_(None),
-                )
-            )
+            # Sprint relax 2026-05-10 · após quality_filter, owner_type='agency'
+            # contém maioritariamente flippers detectados — mas o lead em si
+            # ainda pode ter telemóvel directo válido. Para a Expandida queremos
+            # volume amplo (~150) com menos restrições que Premium.
             .where(Lead.lead_type.notin_(("agency_listing",)))
             .where(Lead.zone.in_(target_zones))
             .order_by(Lead.score.desc())
@@ -548,8 +543,8 @@ def generate_expanded_list(
             continue
         if _is_excluded_landline(lead):
             continue
-        if _is_likely_agency(lead):
-            continue
+        # _is_likely_agency check removed in Expandida (Sprint relax) — agencies
+        # marked with badges visually instead of excluded
 
         seen_phones.add(phone)
         row = _lead_to_row(lead, rank=len(rows) + 1)
