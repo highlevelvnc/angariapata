@@ -708,6 +708,12 @@ def generate_premium_list(
     target_zones = zones or settings.zones
 
     with get_db() as db:
+        # Sprint Re-engagement 2026-05 · leads previously contacted (any state)
+        # are EXCLUDED from Premium/Expandida and routed to the
+        # "🔄 Re-engagement" sheet only when re_engage_after has elapsed. New
+        # leads (last_contacted_at IS NULL) flow as before.
+        from datetime import datetime as _dt
+        _now = _dt.utcnow()
         q = (
             select(Lead)
             .where(
@@ -716,6 +722,7 @@ def generate_premium_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
+                Lead.last_contacted_at.is_(None),             # only fresh leads
                 # Sprint Quality C — exclude suspicious
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
                 # Sprint REAL OWNER 2026-05-10 · APENAS phones reais PT
@@ -811,6 +818,7 @@ def generate_expanded_list(
                 Lead.contact_phone.isnot(None),
                 Lead.contact_phone != "",
                 Lead.score >= min_score,
+                Lead.last_contacted_at.is_(None),             # fresh-leads only
                 (Lead.listing_status.is_(None)) | (Lead.listing_status != "suspicious"),
                 # Sprint REAL OWNER · Expandida também só com phones reais
                 Lead.phone_type.in_(("mobile", "landline")),
@@ -927,6 +935,123 @@ def generate_alternative_list(
         row["whatsapp"]    = ""
         # Highlight URL as the contact channel
         row["url"] = url
+        rows.append(row)
+
+        if len(rows) >= limit:
+            break
+
+    return rows
+
+
+# ── Re-engagement (Sprint 2026-05-11) ────────────────────────────────────────
+def _re_engagement_opening(lead: Lead) -> tuple[str, str]:
+    """
+    Build a different opening line for leads we're contacting a 2nd time.
+    Acknowledges the prior attempt without being awkward.
+    """
+    from urllib.parse import quote
+    phone = _canonical_phone(lead.contact_phone or "") or (lead.contact_phone or "")
+    if not phone:
+        return ("", "")
+
+    fn   = _first_name(lead.contact_name) if hasattr(lead, "contact_name") else ""
+    zone = _short_zone(lead.zone)
+    typ  = (lead.typology or "").strip()
+    if typ.lower() in ("desconhecido", "unknown", "—", "-", ""):
+        typ = ""
+    subj = f"{typ} em {zone}" if typ and zone else "o seu imóvel"
+
+    greet = f"Olá {fn}!" if fn else "Boa tarde!"
+
+    # Re-engagement angles — pick by lead_type
+    lt = (lead.lead_type or "").lower()
+    last = (lead.last_contacted_at.strftime("há %d/%m") if lead.last_contacted_at
+            else "há algumas semanas")
+
+    if lt == "frbo":
+        body = (
+            f"{greet} Sou da Pata Brava — tentei contactá-lo(a) {last} sobre {subj}. "
+            "Se ainda está disponível para arrendar, temos inquilinos pré-qualificados "
+            "na zona. Quer que lhe envie 2-3 perfis em 24h?"
+        )
+    else:
+        body = (
+            f"{greet} Sou da Pata Brava — tentei contactá-lo(a) {last} sobre {subj}. "
+            "Se ainda está aberto(a) a vender, agora temos 2 compradores activos no "
+            "perfil exacto. Quer que combine uma visita esta semana?"
+        )
+
+    msg = body[:320]
+    wa_link = f"https://wa.me/{phone.lstrip('+')}?text={quote(msg)}"
+    return (msg, wa_link)
+
+
+def generate_re_engagement_list(
+    excluded_phones: set[str],
+    zones: list[str] | None = None,
+    limit: int = 200,
+) -> list[dict]:
+    """
+    Build the Re-engagement list.
+
+    Criteria:
+      • re_engage_after IS NOT NULL AND re_engage_after <= now()
+      • NOT archived (so already-converted/refused leads don't return)
+      • has mobile or landline phone (relay is in Lista Alternativa)
+      • not in Premium/Expandida already
+      • zone in target_zones (when specified)
+
+    The opening line is DIFFERENT from the first attempt — acknowledges the
+    prior outreach and offers a fresh angle (buyer-ready, faster timeline).
+    """
+    from datetime import datetime as _dt
+    from sqlalchemy import select
+
+    target_zones = zones or settings.zones
+    now = _dt.utcnow()
+
+    with get_db() as db:
+        q = (
+            select(Lead)
+            .where(
+                Lead.archived == False,                              # noqa: E712
+                Lead.re_engage_after.isnot(None),
+                Lead.re_engage_after <= now,
+                Lead.contact_phone.isnot(None),
+                Lead.contact_phone != "",
+                Lead.phone_type.in_(("mobile", "landline")),
+                Lead.zone.in_(target_zones),
+            )
+            .order_by(Lead.score.desc())
+            .limit(limit * 2)
+        )
+        leads = db.execute(q).scalars().all()
+
+    rows: list[dict] = []
+    seen_phones: set[str] = set()
+    for lead in leads:
+        ph = lead.contact_phone
+        if ph in excluded_phones or ph in seen_phones:
+            continue
+        seen_phones.add(ph)
+
+        row = _lead_to_row(lead, rank=len(rows) + 1)
+
+        # Override the opening + WhatsApp link with the re-engagement variant
+        re_msg, re_link = _re_engagement_opening(lead)
+        row["mensagem_wa"] = re_msg
+        row["whatsapp"]    = re_link
+        row["opening"]     = re_msg or row.get("opening")
+
+        # Stamp how many days passed since the last contact, useful for
+        # Susana to remember the context.
+        if lead.last_contacted_at:
+            days_since = (now - lead.last_contacted_at).days
+            row["notas"] = (
+                f"Re-contacto após {days_since}d. "
+                f"Estado anterior: {_PT_STAGE_LABELS.get(lead.crm_stage, lead.crm_stage)}. "
+                f"Notas anteriores: {(lead.contact_outcome or '—')[:120]}"
+            )
         rows.append(row)
 
         if len(rows) >= limit:
@@ -1063,6 +1188,7 @@ def export_commercial_xlsx(
     summary:  dict,
     output_path: str,
     alternative: list[dict] | None = None,
+    re_engagement: list[dict] | None = None,
 ) -> str:
     """
     Generate a single client-ready XLSX with three sheets.
@@ -1283,7 +1409,36 @@ def export_commercial_xlsx(
         # Move freeze pane down so banner stays visible
         ws_alt.freeze_panes = "A4"
 
-    # ── Sheet 4: Resumo Executivo ─────────────────────────────────────────────
+    # ── Sheet 4: 🔄 Re-engagement (Sprint 2026-05) ────────────────────────────
+    # Leads previously contacted whose re_engage_after window has elapsed.
+    # The opening line is rewritten to acknowledge the prior outreach.
+    if re_engagement:
+        ws_re = wb.create_sheet()
+        _write_sheet(ws_re, re_engagement, "🔄 Re-engagement", "1F77B4")  # cool blue
+        ws_re.insert_rows(1, amount=2)
+        banner = ws_re.cell(row=1, column=1,
+            value="🔄  LEADS PARA 2ª TENTATIVA — JÁ CONTACTADOS HÁ 30+ DIAS")
+        banner.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+        banner.fill = PatternFill("solid", fgColor="1F77B4")
+        banner.alignment = Alignment(horizontal="center", vertical="center")
+        ws_re.merge_cells(start_row=1, start_column=1,
+                          end_row=1, end_column=len(COLUMNS))
+        ws_re.row_dimensions[1].height = 28
+
+        sub = ws_re.cell(row=2, column=1,
+            value="Leads onde a 1ª chamada não converteu (sem resposta ou só contactado). "
+                  "A opening WhatsApp já está reescrita com novo ângulo (compradores activos, "
+                  "visita esta semana). A coluna 'Notas' tem o histórico do contacto anterior. "
+                  "Se mesmo assim não converter, marca 'Não interessado' ou 'Indisponível' "
+                  "para arquivar definitivamente.")
+        sub.font = Font(name="Calibri", italic=True, size=10, color="1F77B4")
+        sub.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws_re.merge_cells(start_row=2, start_column=1,
+                          end_row=2, end_column=len(COLUMNS))
+        ws_re.row_dimensions[2].height = 42
+        ws_re.freeze_panes = "A4"
+
+    # ── Sheet 5: Resumo Executivo ─────────────────────────────────────────────
     ws_sum = wb.create_sheet("Resumo Executivo")
     ws_sum.sheet_properties.tabColor = C["summary_tab"]
 
@@ -1335,6 +1490,11 @@ def export_commercial_xlsx(
     r = _sum_row(r, "  🔴 HOT",                 summary["expanded_hot"])
     r = _sum_row(r, "  🟡 WARM",                summary["expanded_warm"])
     r += 1
+
+    if summary.get("re_engagement_count"):
+        r = _sum_row(r, "🔄 Re-engagement (2ª tentativa)",
+                     summary["re_engagement_count"], bold=True)
+        r += 1
 
     r = _sum_row(r, "CANAIS DE CONTACTO (combinado)", section=True)
     r = _sum_row(r, "📱 Telemóvel",    summary["mobile_count"])
@@ -1445,8 +1605,18 @@ def run_commercial_export(
     )
     log.info("[commercial] Lista Alternativa: {n} leads", n=len(alternative))
 
+    # Sprint Re-engagement 2026-05 · leads where re_engage_after has elapsed
+    log.info("[commercial] Building Lista Re-engagement…")
+    re_engagement = generate_re_engagement_list(
+        excluded_phones=premium_phones | expanded_phones,
+        zones=zones,
+        limit=200,
+    )
+    log.info("[commercial] Lista Re-engagement: {n} leads", n=len(re_engagement))
+
     summary = build_executive_summary(premium, expanded)
-    summary["alternative_count"] = len(alternative)
+    summary["alternative_count"]    = len(alternative)
+    summary["re_engagement_count"] = len(re_engagement)
 
     log.info(
         "[commercial] Summary — Premium: {p} | Expanded: {e} | "
@@ -1460,7 +1630,9 @@ def run_commercial_export(
     if fmt in ("xlsx", "both"):
         xlsx_path = str(out_dir / f"leads_comercial_{ts}.xlsx")
         try:
-            export_commercial_xlsx(premium, expanded, summary, xlsx_path, alternative=alternative)
+            export_commercial_xlsx(premium, expanded, summary, xlsx_path,
+                                    alternative=alternative,
+                                    re_engagement=re_engagement)
             files["xlsx"] = xlsx_path
         except ImportError as exc:
             log.warning("XLSX export skipped: {e}", e=exc)
