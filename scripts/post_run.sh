@@ -51,7 +51,10 @@ say "→ 3/6 Disparar alertas para HOT leads…"
 python3 main.py alerts >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
 
 # ── Step 4 · Re-export commercial XLSX ────────────────────────────
-say "→ 4/6 Gerar XLSX comercial fresco…"
+say "→ 4/8 Owner identity merging (cluster mesmo dono)…"
+python3 main.py merge-owners >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
+
+say "→ 5/8 Gerar XLSX comercial fresco…"
 python3 main.py export-commercial \
   --premium-limit 50 --expanded-limit 65 \
   --output-dir exports/ --format xlsx >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
@@ -59,12 +62,18 @@ python3 main.py export-commercial \
 LATEST_XLSX=$(ls -t exports/leads_comercial_*.xlsx 2>/dev/null | head -1)
 say "  XLSX: $LATEST_XLSX"
 
-# ── Step 5 · Refresh demo numbers + map data ──────────────────────
-say "→ 5/6 Actualizar números no demo + mapa-data.json…"
+say "→ 6/8 Gerar lead cards PDF (top Tier A/B)…"
+python3 main.py generate-cards --top 30 --tiers A,B >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
+
+say "→ 7/8 Conversion analytics (feedback Susana)…"
+python3 main.py conversion-report --out exports/conversion_analytics.xlsx >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
+
+# ── Step 8 · Refresh demo numbers + map data ──────────────────────
+say "→ 8/8 Actualizar números no demo + mapa-data.json…"
 python3 scripts/refresh_demo.py >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
 
 # ── Step 6 · Sync proposta-ptbp + push ────────────────────────────
-say "→ 6/6 Sync proposta-ptbp + push GitHub…"
+say "→ Final · Sync proposta-ptbp + push GitHub…"
 if [ -d "$PROP_DIR" ]; then
   cp exports/demo_patabrava.html "$PROP_DIR/index.html"  2>>"$LOG" || true
   cp exports/mapa.html             "$PROP_DIR/mapa.html"  2>>"$LOG" || true

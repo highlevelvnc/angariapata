@@ -1255,6 +1255,31 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="conversion-report")
+@click.option("--out", default=None, help="Path para guardar XLSX (default: só console)")
+@click.option("--zones", default=None, help="CSV de zonas (default: todas)")
+@click.option("--score-min", default=0, type=int, help="Score mínimo para incluir")
+def conversion_report(out: str, zones: str, score_min: int):
+    """Relatório de conversão baseado no feedback da Susana.
+
+    Calcula contact rate, conversion rate e breakdowns por zona, source,
+    tier, score band, phone type e lead type. Usa `crm_stage` que a
+    Susana preenche via import-feedback.
+
+    Exemplos:
+        python main.py conversion-report
+        python main.py conversion-report --out exports/analytics.xlsx
+        python main.py conversion-report --zones Lisboa,Cascais --score-min 40
+    """
+    from reports.conversion_analytics import compute_analytics, render_console, export_xlsx
+    zone_list = [z.strip() for z in zones.split(",")] if zones else None
+    stats = compute_analytics(score_min=score_min, zones=zone_list)
+    render_console(stats)
+    if out:
+        export_xlsx(stats, out)
+        console.print(f"\n[green]✓ XLSX: {out}[/green]")
+
+
 @cli.command(name="fb-login")
 def fb_login():
     """Abrir browser para login manual no Facebook · guardar cookies.
