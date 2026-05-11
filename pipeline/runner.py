@@ -92,9 +92,16 @@ class PipelineRunner:
         from reports.run_report import RunReportCollector
 
         if sources is None:
+            # Auto-pick portals + classifieds + bank REO + auctions + marketplace.
+            # Marketplace sources that need manual login (Facebook, LinkedIn)
+            # are excluded by key — they're opt-in only.
+            _REQUIRES_LOGIN = {"facebook_marketplace", "linkedin"}
             sources = [
                 k for k, meta in SOURCE_REGISTRY.items()
-                if meta.is_active and meta.category in ("portal", "classified", "bank_reo", "auction")
+                if meta.is_active
+                and meta.category in ("portal", "classified", "bank_reo",
+                                      "auction", "marketplace")
+                and k not in _REQUIRES_LOGIN
             ]
             log.info(
                 "[runner] auto-selected sources from registry: {s}",

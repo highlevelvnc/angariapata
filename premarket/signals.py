@@ -32,6 +32,10 @@ SIGNAL_SCORES: dict[str, int] = {
     "linkedin_city_change":      60,
     "linkedin_job_change":       40,
     "contractor_search_post":    65,
+    # Internal signals derived from our own DB (no external scrape):
+    "distressed_stale":          75,   # 120+ days on market = motivado
+    "distressed_cross_portal":   65,   # mesmo phone em 3+ portais = marketing agressivo
+    "distressed_portfolio":      55,   # vendedor com 3+ listings activos
 }
 
 SIGNAL_LABELS_PT: dict[str, str] = {
@@ -41,6 +45,9 @@ SIGNAL_LABELS_PT: dict[str, str] = {
     "linkedin_city_change":      "Mudanca de Cidade",
     "linkedin_job_change":       "Mudanca Profissional",
     "contractor_search_post":    "Procura Empreiteiro",
+    "distressed_stale":          "Listing Frio (120+ dias)",
+    "distressed_cross_portal":   "Vendedor Multi-Portal",
+    "distressed_portfolio":      "Portfolio Activo",
 }
 
 SIGNAL_ICONS: dict[str, str] = {
@@ -50,6 +57,9 @@ SIGNAL_ICONS: dict[str, str] = {
     "linkedin_city_change":      "✈️",
     "linkedin_job_change":       "💼",
     "contractor_search_post":    "📋",
+    "distressed_stale":          "❄",
+    "distressed_cross_portal":   "🔗",
+    "distressed_portfolio":      "📊",
 }
 
 LEAD_TYPE = "premarket_owner"

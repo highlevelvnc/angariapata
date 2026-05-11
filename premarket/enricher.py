@@ -107,6 +107,12 @@ class PremktEnricher:
         except Exception as e:
             log.warning("[premarket] Could not load LinkedInSearchSource: {e}", e=e)
 
+        try:
+            from premarket.sources.distressed_owners import DistressedOwnersSource
+            sources.append(DistressedOwnersSource())
+        except Exception as e:
+            log.warning("[premarket] Could not load DistressedOwnersSource: {e}", e=e)
+
         return sources
 
     # ── Public run ────────────────────────────────────────────────────────────
