@@ -113,6 +113,12 @@ class PremktEnricher:
         except Exception as e:
             log.warning("[premarket] Could not load DistressedOwnersSource: {e}", e=e)
 
+        try:
+            from premarket.sources.citius_insolvencias import CitiusInsolvenciasSource
+            sources.append(CitiusInsolvenciasSource())
+        except Exception as e:
+            log.warning("[premarket] Could not load CitiusInsolvenciasSource: {e}", e=e)
+
         return sources
 
     # ── Public run ────────────────────────────────────────────────────────────

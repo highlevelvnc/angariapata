@@ -1255,6 +1255,97 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="fb-login")
+def fb_login():
+    """Abrir browser para login manual no Facebook · guardar cookies.
+
+    Esta é a única acção manual que precisas de fazer.
+
+    Fluxo:
+      1. Abre um Chromium não-headless com a página de login do FB
+      2. Tu fazes login (incluindo 2FA se necessário)
+      3. Quando estiveres no feed, vens ao terminal e pressionas Enter
+      4. As cookies são guardadas em data/.fb_state.json (gitignored)
+      5. Próximas runs automáticas usam essas cookies sem intervenção
+
+    Cookies expiram em ~30-90 dias. Quando expirarem, vais ver o warning
+    nos logs do scraper e correr `fb-login` outra vez.
+    """
+    from scrapers.facebook_marketplace import _login_interactive
+    console.print("[cyan]A abrir browser para login manual no Facebook…[/cyan]")
+    console.print("[yellow]Faz login no separador que abre, depois volta cá e pressiona Enter.[/yellow]")
+    _login_interactive()
+    console.print("[green]✓ Cookies guardadas[/green]")
+    console.print("  Agora corre `python main.py fb-check` para verificar.")
+
+
+@cli.command(name="fb-check")
+def fb_check():
+    """Verificar se as cookies do Facebook estão válidas."""
+    from scrapers.facebook_marketplace import _check_cookies
+    ok = _check_cookies()
+    if ok:
+        console.print("[green]✓ Cookies FB válidas — scraper vai correr nas próximas runs[/green]")
+    else:
+        console.print(
+            "[yellow]⚠ Sem cookies válidas — corre `python main.py fb-login` "
+            "para activar o scraper.[/yellow]"
+        )
+
+
+@cli.command(name="scrape-fb")
+@click.option("--zones", default=None, help="CSV de zonas (default: settings)")
+def scrape_fb(zones: str):
+    """Correr o scraper FB Marketplace manualmente (após fb-login).
+
+    Útil para testar / debug. A run automática inclui isto se as cookies
+    estiverem presentes.
+    """
+    from scrapers.facebook_marketplace import FacebookMarketplaceScraper, _check_cookies
+    if not _check_cookies():
+        console.print("[red]✗ Sem cookies — corre `fb-login` primeiro[/red]")
+        return
+    zone_list = [z.strip() for z in zones.split(",")] if zones else None
+    scraper = FacebookMarketplaceScraper()
+    console.print(f"[cyan]A correr FB Marketplace · zones={zone_list or 'default'}[/cyan]")
+    result = scraper.run(zones=zone_list)
+    console.print(
+        f"[green]✓ Done[/green] · {len(result.items)} listings · {len(result.errors)} erros"
+    )
+
+
+@cli.command(name="merge-owners")
+@click.option("--threshold", default=0.88, type=float, show_default=True,
+              help="Similaridade mínima de nome para merge (0-1)")
+@click.option("--dry-run",   is_flag=True, help="Mostrar o que faria sem gravar")
+def merge_owners(threshold: float, dry_run: bool):
+    """Identificar e agrupar leads que pertencem ao mesmo owner real.
+
+    Stage 1: leads com mesmo phone → mesma identidade
+    Stage 2: leads sem phone com nome pessoal similar + mesma zona → fuzzy merge
+    Stage 3: propagar o nome canónico (mais completo) ao cluster
+
+    Resultado guardado em Lead.owner_identity_id (indexed). NULL = sem
+    identidade computada ou sem sinal de cluster.
+    """
+    from pipeline.owner_merger import compute_identities
+    console.print(f"[cyan]A calcular owner identities (threshold={threshold})…[/cyan]")
+    stats = compute_identities(name_threshold=threshold, dry_run=dry_run)
+    console.print(
+        f"[green]✓ {stats['total_identities']} identidades[/green] · "
+        f"phone groups={stats['phone_groups']} · "
+        f"name groups={stats['name_groups']} · "
+        f"leads assigned={stats['leads_assigned']} · "
+        f"sem cluster={stats['leads_without_identity']}"
+    )
+    if not stats.get("dry_run"):
+        console.print(
+            f"  Canonical-name updates: {stats.get('canonical_name_updates', 0)}"
+        )
+    else:
+        console.print("[yellow]  (dry-run · nada gravado)[/yellow]")
+
+
 @cli.command(name="import-feedback")
 @click.argument("xlsx_path")
 @click.option("--by",      default="Susana", help="Quem fez os contactos (default: Susana)")

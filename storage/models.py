@@ -204,6 +204,12 @@ class Lead(Base):
     priority_flag: Mapped[bool]          = mapped_column(Boolean, default=False)
     archived:      Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
 
+    # ── Owner identity merging (Sprint 2026-05-11) ───────────────────────────
+    # Populated by `pipeline.owner_merger.compute_identities`. Leads sharing
+    # the same owner_identity_id are the same real owner across portals/
+    # name variants. NULL = not yet computed or no clusterable signal.
+    owner_identity_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+
     # ── Feedback loop (Sprint 2026-05-11) ────────────────────────────────────
     # Populated by `pipeline.feedback_importer` reading back the XLSX after
     # Susana fills the "Estado", "Notas" and "Data contacto" columns.
