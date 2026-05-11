@@ -1255,6 +1255,71 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="morning-prep")
+@click.option("--no-open", is_flag=True, help="Não abrir Finder/browser no fim")
+@click.option("--top",     default=15, type=int, help="Quantos top leads para chamar hoje")
+def morning_prep(no_open: bool, top: int):
+    """Prepara o dia da Susana: XLSX + cards + analytics + dashboard.
+
+    Comando único que corre TODOS os passos pós-scrape para entregar:
+      1. XLSX comercial fresco (exports/leads_comercial_*.xlsx)
+      2. Lead cards PDF top Tier A+B (data/lead_cards/lead_*.pdf)
+      3. Conversion analytics (exports/conversion_analytics.xlsx)
+      4. Dashboard HTML (data/dashboard.html) — abre no browser
+
+    No fim, abre o ficheiro dashboard.html no browser e Finder na pasta
+    de outputs (a menos que passes --no-open).
+
+    Exemplos:
+        python main.py morning-prep
+        python main.py morning-prep --top 30
+        python main.py morning-prep --no-open
+    """
+    import subprocess
+    from pathlib import Path
+
+    console.print("[bold cyan]☕ MORNING PREP — Pata Brava[/bold cyan]")
+
+    console.print("\n[cyan]→ 1/4 · Owner identity merging…[/cyan]")
+    from pipeline.owner_merger import compute_identities
+    s = compute_identities()
+    console.print(f"  [green]✓[/green] {s['total_identities']} identidades · {s['leads_assigned']} leads agrupados")
+
+    console.print("\n[cyan]→ 2/4 · Export comercial XLSX…[/cyan]")
+    from reports.commercial_export import run_commercial_export
+    out = run_commercial_export(fmt="xlsx", output_dir="exports")
+    xlsx_path = out.get("files", {}).get("xlsx", "")
+    console.print(f"  [green]✓[/green] {xlsx_path}")
+
+    console.print(f"\n[cyan]→ 3a/4 · Lead cards PDF (top {top} Tier A/B)…[/cyan]")
+    from reports.lead_card import generate_top_cards
+    paths = generate_top_cards(limit=top, tier_filter=("A", "B"))
+    console.print(f"  [green]✓[/green] {len(paths)} PDFs em data/lead_cards/")
+
+    console.print("\n[cyan]→ 3b/4 · Conversion analytics XLSX…[/cyan]")
+    from reports.conversion_analytics import compute_analytics, export_xlsx
+    stats = compute_analytics()
+    analytics_path = "exports/conversion_analytics.xlsx"
+    export_xlsx(stats, analytics_path)
+    console.print(f"  [green]✓[/green] {analytics_path}")
+
+    console.print("\n[cyan]→ 4/4 · Dashboard HTML…[/cyan]")
+    from reports.morning_dashboard import generate_dashboard
+    dash_path = generate_dashboard()
+    console.print(f"  [green]✓[/green] {dash_path}")
+
+    console.print(f"\n[bold green]☕ Bom dia! Tens {len(paths)} leads top A/B para chamar e o dashboard pronto.[/bold green]")
+
+    if not no_open:
+        try:
+            subprocess.Popen(["open", str(dash_path)])
+            console.print(f"  [dim]→ Abri {dash_path.name} no browser[/dim]")
+            subprocess.Popen(["open", "data/lead_cards"])
+            console.print(f"  [dim]→ Abri data/lead_cards no Finder[/dim]")
+        except Exception as e:
+            console.print(f"  [yellow]⚠ Não consegui abrir automaticamente: {e}[/yellow]")
+
+
 @cli.command(name="conversion-report")
 @click.option("--out", default=None, help="Path para guardar XLSX (default: só console)")
 @click.option("--zones", default=None, help="CSV de zonas (default: todas)")
