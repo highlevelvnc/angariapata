@@ -93,16 +93,28 @@ class PipelineRunner:
 
         if sources is None:
             # Auto-pick portals + classifieds + bank REO + auctions + marketplace.
-            # Marketplace sources that need manual login (Facebook, LinkedIn)
-            # are excluded by key — they're opt-in only.
-            _REQUIRES_LOGIN = {"facebook_marketplace", "linkedin"}
-            sources = [
-                k for k, meta in SOURCE_REGISTRY.items()
-                if meta.is_active
-                and meta.category in ("portal", "classified", "bank_reo",
-                                      "auction", "marketplace")
-                and k not in _REQUIRES_LOGIN
-            ]
+            # Login-gated sources (FB, LinkedIn) are included ONLY if the
+            # cookie file exists — otherwise they're skipped silently.
+            from pathlib import Path
+            _LOGIN_GATED = {
+                "facebook_marketplace": Path("data/.fb_state.json"),
+                "linkedin":             Path("data/.linkedin_state.json"),
+            }
+            sources = []
+            for k, meta in SOURCE_REGISTRY.items():
+                if not meta.is_active:
+                    continue
+                if meta.category not in ("portal", "classified", "bank_reo",
+                                          "auction", "marketplace"):
+                    continue
+                if k in _LOGIN_GATED and not _LOGIN_GATED[k].exists():
+                    log.info(
+                        "[runner] skipping {k} — sem cookies em {p} "
+                        "(corre `python main.py fb-login` para activar)",
+                        k=k, p=_LOGIN_GATED[k],
+                    )
+                    continue
+                sources.append(k)
             log.info(
                 "[runner] auto-selected sources from registry: {s}",
                 s=sources,
