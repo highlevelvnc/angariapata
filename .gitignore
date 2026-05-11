@@ -85,3 +85,5 @@ htmlcov/
 # Database snapshots — large + sensitive, never in git
 data/backups/
 data/directriz_cliente_*.xlsx
+data/lead_cards/
+data/photos/

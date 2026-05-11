@@ -1255,6 +1255,33 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="generate-cards")
+@click.option("--top",   default=20,    type=int, show_default=True,
+              help="Quantos top leads gerar (Tier A/B, ordenados por score+preço)")
+@click.option("--tiers", default="A,B", help="Tiers a incluir (csv, ex: A · A,B · A,B,D)")
+def generate_cards(top: int, tiers: str):
+    """Gerar PDF de 1 página por lead Tier A/B — pronto a enviar a compradores.
+
+    Cada PDF tem: foto, tipologia, zona, preço, comissão estimada, dossier
+    completo, opening WhatsApp + QR code, URL do anúncio. Output:
+    ``data/lead_cards/lead_<id>.pdf``.
+
+    Exemplos:
+        python main.py generate-cards
+        python main.py generate-cards --top 50
+        python main.py generate-cards --tiers A
+    """
+    from reports.lead_card import generate_top_cards
+
+    tier_tuple = tuple(t.strip().upper() for t in tiers.split(",") if t.strip())
+    console.print(f"[cyan]A gerar até {top} lead cards (tiers={tier_tuple})…[/cyan]")
+    paths = generate_top_cards(limit=top, tier_filter=tier_tuple)
+    console.print(f"[green]✓ {len(paths)} cards gerados em data/lead_cards/[/green]")
+    if paths:
+        console.print(f"  Primeiro: {paths[0]}")
+        console.print(f"  Último:   {paths[-1]}")
+
+
 @cli.command(name="import-leads")
 @click.argument("path")
 @click.option("--pattern",  default=None,  help="Glob pattern para múltiplos ficheiros (ex: 'contactos_*.csv')")
