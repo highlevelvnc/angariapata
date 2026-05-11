@@ -63,6 +63,20 @@ log = get_logger(__name__)
 _PHONE_PRIORITY = {"mobile": 0, "relay": 1, "unknown": 2, "landline": 3}
 
 # ── Phone type labels ─────────────────────────────────────────────────────────
+# Feedback loop · canonical crm_stage values ↔ PT labels (for XLSX cell)
+_PT_STAGE_LABELS: dict[str, str] = {
+    "novo":             "Novo",
+    "contactado":       "Contactado",
+    "sem_resposta":     "Sem resposta",
+    "interessado":      "Interessado",
+    "nao_interessado":  "Não interessado",
+    "indisponivel":     "Indisponível",
+    "convertido":       "✓ Convertido",
+}
+# Reverse map used by feedback importer
+_STAGE_FROM_LABEL: dict[str, str] = {v.lower().lstrip("✓ ").strip(): k
+                                     for k, v in _PT_STAGE_LABELS.items()}
+
 _PHONE_LABELS = {
     "mobile":   "Telemóvel",
     "relay":    "Relay/OLX",
@@ -653,6 +667,12 @@ def _lead_to_row(lead: Lead, rank: int | None = None) -> dict:
         "briefing":      briefing_text or "—",
         "opening":       opening_line or "—",
         "comissao_est":  f"€{commission_eur:,.0f}".replace(",", " ") if commission_eur else "—",
+        # ── Feedback loop · pré-preenchido se já contactado ──────────────────
+        "estado":            _PT_STAGE_LABELS.get(lead.crm_stage or "novo", "Novo"),
+        "data_contacto":     lead.last_contacted_at.strftime("%d/%m/%Y")
+                              if getattr(lead, "last_contacted_at", None) else "",
+        "notas":             getattr(lead, "contact_outcome", "") or "",
+        "lead_id":           lead.id,            # written to sheet — needed for import-feedback
         # internal fields for filtering/sorting — not written to sheet
         "_phone_type":   pt,
         "_lead_id":      lead.id,
@@ -1112,6 +1132,12 @@ def export_commercial_xlsx(
         ("Comissão est.","comissao_est", 14),
         ("Opening",      "opening",      60),
         ("Briefing",     "briefing",     80),
+        # Feedback loop · 3 columns that Susana fills in (the import-feedback
+        # command reads them back into the DB). lead_id is the join key.
+        ("Estado",       "estado",       15),
+        ("Notas",        "notas",        40),
+        ("Data Contacto","data_contacto",13),
+        ("Lead ID",      "lead_id",       8),
     ]
 
     def _write_sheet(ws, rows: list[dict], title: str, tab_color: str) -> None:

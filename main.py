@@ -1255,6 +1255,46 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="import-feedback")
+@click.argument("xlsx_path")
+@click.option("--by",      default="Susana", help="Quem fez os contactos (default: Susana)")
+@click.option("--dry-run", is_flag=True,     help="Não escrever na DB, só reportar")
+def import_feedback_cmd(xlsx_path: str, by: str, dry_run: bool):
+    """Ler a XLSX preenchida pela operadora e actualizar o estado dos leads.
+
+    A operadora preenche 3 colunas: Estado / Notas / Data Contacto.
+    Este comando lê de volta e:
+      - crm_stage = nao_interessado / convertido → arquiva o lead
+      - crm_stage = sem_resposta / contactado    → agenda re-engagement +30d
+      - crm_stage = interessado / indisponivel   → guarda + limpa schedule
+      - Notas → contact_outcome
+      - Data Contacto → last_contacted_at (default hoje)
+
+    Exemplos:
+        python main.py import-feedback exports/comercial.xlsx
+        python main.py import-feedback comercial.xlsx --by "Pedro"
+        python main.py import-feedback comercial.xlsx --dry-run
+    """
+    from pipeline.feedback_importer import import_feedback
+    console.print(f"[cyan]A importar feedback de {xlsx_path} (by={by})…[/cyan]")
+    stats = import_feedback(xlsx_path, contacted_by=by, dry_run=dry_run)
+    console.print(
+        f"[green]✓ Done[/green] · "
+        f"updated={stats['updated']} · "
+        f"archived={stats['archived']} · "
+        f"re-engagement +30d={stats['re_engagement_scheduled']} · "
+        f"unchanged={stats['unchanged']}"
+    )
+    if stats["missing_lead_id"] or stats["lead_not_found"]:
+        console.print(
+            f"[yellow]  Linhas ignoradas: "
+            f"sem Lead ID={stats['missing_lead_id']}, "
+            f"lead não encontrado={stats['lead_not_found']}[/yellow]"
+        )
+    if dry_run:
+        console.print("[yellow]  (dry-run · nada foi gravado)[/yellow]")
+
+
 @cli.command(name="generate-cards")
 @click.option("--top",   default=20,    type=int, show_default=True,
               help="Quantos top leads gerar (Tier A/B, ordenados por score+preço)")

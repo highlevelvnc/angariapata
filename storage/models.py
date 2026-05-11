@@ -191,10 +191,28 @@ class Lead(Base):
         self.score_breakdown = json.dumps(data)
 
     # ── CRM ──────────────────────────────────────────────────────────────────
+    # crm_stage values used by the feedback loop:
+    #   novo            — lead acabado de gerar, ainda não contactado
+    #   contactado      — tentou-se contacto mas ainda sem resposta clara
+    #   sem_resposta    — chamada não atendida / WhatsApp sem resposta
+    #   interessado     — vendedor mostrou interesse → seguir
+    #   nao_interessado — vendedor recusou → arquivar
+    #   indisponivel    — número errado / não atende sistematicamente
+    #   convertido      — angariação fechada → marcar e arquivar
     crm_stage:     Mapped[str]           = mapped_column(String(50), default="novo", index=True)
     assigned_to:   Mapped[Optional[str]] = mapped_column(String(100))
     priority_flag: Mapped[bool]          = mapped_column(Boolean, default=False)
     archived:      Mapped[bool]          = mapped_column(Boolean, default=False, index=True)
+
+    # ── Feedback loop (Sprint 2026-05-11) ────────────────────────────────────
+    # Populated by `pipeline.feedback_importer` reading back the XLSX after
+    # Susana fills the "Estado", "Notas" and "Data contacto" columns.
+    contact_outcome:   Mapped[Optional[str]]      = mapped_column(Text)
+    last_contacted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)
+    contacted_by:      Mapped[Optional[str]]      = mapped_column(String(100))
+    # When to re-surface this lead for re-engagement (default: +30d after
+    # last_contacted_at if crm_stage == "sem_resposta").
+    re_engage_after:   Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)
 
     # ── Data origin & provenance ──────────────────────────────────────────────
     # True  → created by seed-demo (demo/testing purposes only)

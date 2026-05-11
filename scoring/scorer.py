@@ -184,6 +184,14 @@ class Scorer:
         # ── 13. Pre-Market Signal Bonus (0 to +10) ────────────────────────────
         breakdown["premarket_signal_bonus"] = self._score_premarket(lead)
 
+        # ── 14. Feedback Loop Adjustment (Sprint 2026-05-11) ──────────────────
+        # When the operator marks the lead's outcome we feed that back into the
+        # score so the next export ranks them accordingly. "interessado" is the
+        # strongest positive signal (real human said yes). "indisponivel" is
+        # negative (phone is dead). Archived stages don't matter for scoring
+        # because they're filtered out of the export anyway.
+        breakdown["feedback_adjustment"] = self._score_feedback(lead)
+
         result.total = sum(breakdown.values())
         result.total = max(0, min(100, result.total))  # clamp 0-100
 
@@ -512,6 +520,28 @@ class Scorer:
         if not zone:
             return 0
         return self._premarket_zones.get(zone, 0)
+
+    def _score_feedback(self, lead) -> int:
+        """
+        Adjust score based on operator feedback (dim 14).
+
+          interessado    → +15  vendedor confirmou interesse → top da lista
+          contactado     →  +5  alguém atendeu, ainda em jogo
+          sem_resposta   →   0  neutro (vai voltar via re-engagement)
+          indisponivel   → -20  número morto / sistematicamente não atende
+          nao_interessado→ -100 forçar abaixo de COLD (mas archived deve excluí-los)
+          convertido     → +50  bandeira de vitória — facilmente visível em relatórios
+          novo / None    →   0  default
+        """
+        stage = (getattr(lead, "crm_stage", None) or "novo").lower()
+        return {
+            "interessado":     15,
+            "contactado":       5,
+            "sem_resposta":     0,
+            "indisponivel":   -20,
+            "nao_interessado": -100,
+            "convertido":      50,
+        }.get(stage, 0)
 
     def _load_premarket_zones(self) -> None:
         """Build a zone → bonus map from premarket_signals table."""
