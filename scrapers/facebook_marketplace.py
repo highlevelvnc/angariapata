@@ -61,19 +61,22 @@ log = get_logger(__name__)
 ROOT_DIR     = Path(__file__).resolve().parent.parent
 COOKIE_PATH  = ROOT_DIR / "data" / ".fb_state.json"
 
-# Marketplace city IDs — discovered via Facebook's location autocomplete.
-# These are stable per-city tokens FB uses to filter the search.
+# Marketplace city SLUGS — FB migrated away from numeric location_ids in
+# 2024-25. The legacy `/{numeric_id}/propertyforsale/?radius=…` URL returns
+# an empty feed (0 cards). The new working URL pattern is
+#   /marketplace/{city-slug}/propertyforsale
+# Validated live 2026-05-11: each slug below returns ~38 cards per scroll.
 ZONE_LOCATION_IDS: dict[str, str] = {
-    "Lisboa":   "111777152182368",
-    "Cascais":  "108277045871731",
-    "Sintra":   "108160195880076",
-    "Almada":   "111712752199706",
-    "Seixal":   "108108025884060",
-    "Porto":    "112548045432593",
+    "Lisboa":   "lisbon",
+    "Cascais":  "cascais",
+    "Sintra":   "sintra",
+    "Almada":   "almada",
+    "Seixal":   "seixal",
+    "Porto":    "porto",
 }
 
-# How many radius miles around the city to include. 25 covers the whole
-# Grande Lisboa metro area without bleeding into neighbouring districts.
+# Radius is no longer a query param in the slug URL — kept for backward
+# compatibility with any caller that introspects this constant.
 SEARCH_RADIUS_KM = 25
 
 MAX_LISTINGS_PER_RUN = 100
@@ -212,9 +215,12 @@ class FacebookMarketplaceScraper(BaseScraper):
                 )
                 page = await context.new_page()
 
+                # FB Marketplace slug-based URL (legacy numeric-id URL returns
+                # empty feed since the 2024-25 migration). location_id is now
+                # the city slug ("lisbon", "cascais", …).
                 url = (
                     f"https://www.facebook.com/marketplace/{location_id}/"
-                    f"propertyforsale/?radius={SEARCH_RADIUS_KM * 1000}&exact=false"
+                    f"propertyforsale"
                 )
                 log.info("[fb_marketplace] zone={z} → {u}", z=zone, u=url[:90])
                 try:
