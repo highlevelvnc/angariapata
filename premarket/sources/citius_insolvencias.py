@@ -57,20 +57,34 @@ log = get_logger(__name__)
 # Flip to True after first manual verification on the live Citius portal.
 # Required by the enricher's defensive-loading try/except — when False, the
 # source still loads (no error) but fetch() returns [] immediately.
+#
+# Status 2026-05-11: portal Citius está flaky por IP — staged-warmup
+# (3 hops + 1.5s pauses) passa do 404, form carrega, mas submit não
+# retorna resultados consistentemente. Selectors actualizados e prontos.
+# Para reactivar quando o portal estiver estável: flip para True e
+# corre `python -c "from premarket.sources.citius_insolvencias import
+# CitiusInsolvenciasSource; print(len(CitiusInsolvenciasSource().fetch()))"`.
 _CITIUS_ENABLED = False
 
 # ── Selectors (ASP.NET form) ─────────────────────────────────────────────────
-# Validated against citius.mj.pt 2026-05-11. These IDs are stable across
-# postbacks because ASP.NET WebForms keeps Control IDs deterministic.
+# Validated live against citius.mj.pt 2026-05-11. The Cire page returns 404
+# without a session cookie — we MUST hit /portal/default.aspx first to get
+# ASP.NET_SessionId before navigating to the Cire form.
+_HOME_URL          = "https://www.citius.mj.pt/portal/default.aspx"
 _BASE_URL          = "https://www.citius.mj.pt/portal/consultas/ConsultasCire.aspx"
-_SEL_DATE_FROM     = "input[name$='txtDataDe']"
-_SEL_DATE_TO       = "input[name$='txtDataAte']"
-_SEL_ACTION_GROUP  = "select[name$='ddlGrupoActo']"
-_SEL_SUBMIT_BTN    = "input[type='submit'][value*='Pesquisar' i], button[type='submit']"
-_SEL_RESULTS_ROW   = "table.tabela tbody tr, .resultados table tr"
 
-# "Insolvência" is the action group we want. Confirmed in dropdown 2026-05.
-_ACTION_GROUP_LABEL = "Insolvência"
+_SEL_DATE_FROM     = "#ctl00_ContentPlaceHolder1_txtCalendarDesde"
+_SEL_DATE_TO       = "#ctl00_ContentPlaceHolder1_txtCalendarAte"
+_SEL_ACTION_GROUP  = "#ctl00_ContentPlaceHolder1_ddlGrupoActos"
+_SEL_SUBMIT_BTN    = "#ctl00_ContentPlaceHolder1_btnSearch"
+_SEL_RESULTS_ROW   = ("table[id*='gvResultados'] tr, "
+                     "table[id*='gridResultados'] tr, "
+                     "#ctl00_ContentPlaceHolder1_GridView1 tr, "
+                     "div[id*='ResultsArea'] table tr")
+
+# Confirmed in dropdown live: "Publicidade da Insolvência" is the primary
+# group for insolvency announcements.
+_ACTION_GROUP_LABEL = "Publicidade da Insolvência"
 
 # Date window — 30d lookback by default (insolvency-to-listing typically 3-12m
 # but the freshest signals convert best).
@@ -124,9 +138,26 @@ async def _fetch_async(zones: list[str] | None) -> list[PremktSignalData]:
         )
         page = await context.new_page()
         try:
+            # Citius is finicky: a single hit to the Cire page 404s. The
+            # portal needs to see "real" navigation first to issue a valid
+            # ASP.NET session. Staged warmup (3 hops with ~1.5s pauses) is
+            # what reliably gets us through to a 200 on the form.
+            log.info("[citius] staged warmup (3 hops)…")
+            for url in (
+                "https://www.citius.mj.pt/",
+                _HOME_URL,
+                "https://www.citius.mj.pt/portal/consultas/servicoshome.aspx",
+            ):
+                await page.goto(url, wait_until="domcontentloaded",
+                                timeout=_PAGE_TIMEOUT_MS)
+                await asyncio.sleep(1.5)
             log.info("[citius] navigating to {u}", u=_BASE_URL)
             await page.goto(_BASE_URL, wait_until="domcontentloaded",
                             timeout=_PAGE_TIMEOUT_MS)
+            if "Wrong" in (await page.title()):
+                log.warning("[citius] session warmup failed — Cire 404. "
+                            "Portal is rate-limiting our IP. Retry later.")
+                return []
 
             # Fill date range
             try:
