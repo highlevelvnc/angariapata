@@ -317,8 +317,21 @@ class Scorer:
         return -15
 
     def _score_days(self, lead) -> int:
-        """Longer on market → more motivated seller."""
+        """
+        Longer on market → more motivated seller.
+
+        Sprint Stale-Listings 2026-05: extended top-end buckets. Listings
+        sitting 180+ days are statistically the most motivated — owner has
+        already absorbed market feedback that the price is wrong but hasn't
+        relisted with another agency. These are gold for direct contact.
+        """
         days = getattr(lead, "days_on_market", 0) or 0
+        if days >= 365:
+            return 30   # super-stale: 1+ year, max motivation
+        if days >= 180:
+            return 22   # 6+ months: very motivated
+        if days >= 120:
+            return 18
         if days >= 90:
             return 15
         if days >= 60:

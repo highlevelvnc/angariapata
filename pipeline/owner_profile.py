@@ -40,6 +40,11 @@ class OwnerProfile:
     portfolio_value: float = 0.0
     oldest_listing: Optional[datetime] = None
     is_multi_property: bool = False  # owner has >1 active listing
+    # Sprint Cross-Portal 2026-05: which portals the same phone shows up in.
+    # A phone appearing in OLX + Imovirtual is a stronger owner-identity
+    # signal than appearing once in either.
+    portals: list[str] = field(default_factory=list)
+    cross_portal: bool = False
 
 
 def get_profile(lead: Lead, max_listings: int = 3) -> OwnerProfile:
@@ -77,14 +82,25 @@ def get_profile(lead: Lead, max_listings: int = 3) -> OwnerProfile:
     p.portfolio_value = sum(prices) if prices else 0
     p.oldest_listing = min(seen_at) if seen_at else None
     p.is_multi_property = len(siblings) >= 2
+    # Cross-portal identity: same phone across distinct portals
+    portals = sorted({(s.discovery_source or "").lower() for s in siblings
+                      if s.discovery_source})
+    p.portals = [pt for pt in portals if pt]
+    p.cross_portal = len(p.portals) >= 2
     return p
 
 
 def format_profile_summary(p: OwnerProfile) -> str:
     """Compact one-line summary for XLSX cell or HTML tooltip."""
     if p.listings_count <= 1:
+        # Even a single-listing owner can carry cross-portal signal if the
+        # same phone shows up only once but in multiple portals (rare).
+        if p.cross_portal:
+            return "Único · 🔗 " + "+".join(p.portals)
         return "Único listing"
     parts = [f"{p.listings_count} listings"]
+    if p.cross_portal:
+        parts.append("🔗 " + "+".join(p.portals[:3]))
     if p.zones:
         parts.append("·".join(p.zones[:2]))
     if p.typologies:

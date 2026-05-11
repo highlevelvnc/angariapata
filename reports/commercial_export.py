@@ -433,8 +433,15 @@ def _motivation_badges(lead: Lead) -> list[str]:
     if lead.price_changes and lead.price_changes != "{}":
         out.append("🔥 PREÇO BAIXOU")
 
-    # 📅 Long on market (only meaningful after multiple runs)
-    if (lead.days_on_market or 0) >= 60:
+    # 📅 Long on market — tiered to surface the most motivated sellers
+    dom = lead.days_on_market or 0
+    if dom >= 365:
+        out.append("⏰ FRIO 1 ANO+")
+    elif dom >= 180:
+        out.append("🥶 6 MESES+ NO MERCADO")
+    elif dom >= 120:
+        out.append("❄ 4 MESES+ LISTADO")
+    elif dom >= 60:
         out.append("📅 LONGO MERCADO")
 
     # 🔄 Re-listed (Sprint Engine C) — strong motivation signal
@@ -481,12 +488,15 @@ def _motivation_badges(lead: Lead) -> list[str]:
         elif age_h <= 168:  # 7 days
             out.append("🌟 ESTA SEMANA")
 
-    # 👥 Multi-property owner (Sprint Engine WW)
+    # 👥 Multi-property owner + 🔗 Cross-portal (Sprint Engine WW + Cross-Portal)
     try:
         from pipeline.owner_profile import get_profile
         p = get_profile(lead)
         if p.is_multi_property and p.listings_count >= 2:
             out.append(f"👥 PORTFÓLIO {p.listings_count}×")
+        if p.cross_portal:
+            # Strong owner-identity signal: same phone across 2+ portals
+            out.append(f"🔗 EM {len(p.portals)} PORTAIS")
     except Exception:
         pass
 
