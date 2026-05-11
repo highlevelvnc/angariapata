@@ -56,8 +56,17 @@ class CustojustoScraper(BaseScraper):
         "Palmela": "palmela", "Setubal": "setubal", "Moita": "moita",
         "Alcochete": "alcochete",
     }
-    ZONE_SLUGS:        dict[str, str] = {k: f"{v}/imoveis"  for k, v in _ZONE_KEYS.items()}
-    ZONE_RENTAL_SLUGS: dict[str, str] = {k: f"{v}/arrendar" for k, v in _ZONE_KEYS.items()}
+    # Sprint Custojusto Bugfix 2026-05: slug fix
+    # ---------------------------------------------------------------------
+    # The portal redirects /{zone}/imoveis → /{zone}/q/imoveis (search-term
+    # mode, returns mixed garbage including livros, emprego). The real
+    # category page is /{zone}/imobiliario (verified live 2026-05). Rentals
+    # work as a sub-slug list — apartamentos-arrendar covers ~80% of rental
+    # volume on the portal.
+    ZONE_SLUGS:        dict[str, str] = {k: f"{v}/imobiliario" for k, v in _ZONE_KEYS.items()}
+    ZONE_RENTAL_SLUGS: dict[str, str] = {
+        k: f"{v}/imobiliario/apartamentos-arrendar" for k, v in _ZONE_KEYS.items()
+    }
 
     SCRAPE_RENTALS: bool = True
     DEFAULT_SLUG = "lisboa/imoveis"
@@ -167,12 +176,22 @@ class CustojustoScraper(BaseScraper):
         if not title or len(title) < 5:
             return None
 
-        # Skip non-real-estate categories
+        # URL is now /{zone}/imobiliario so categories should already be
+        # real-estate only. Belt-and-braces: keep the skip list as a guard
+        # against future URL changes that might let non-property bleed in.
         cat_name = (item.get("categoryName") or "").lower()
         _SKIP_CATS = {"informática", "informatica", "electrónica", "electronica",
                       "veículos", "veiculos", "emprego", "serviços", "servicos",
-                      "animais", "desporto", "moda", "lazer", "bebé", "bebe"}
+                      "animais", "desporto", "moda", "lazer", "bebé", "bebe",
+                      "livros", "música", "musica"}
         if any(s in cat_name for s in _SKIP_CATS):
+            return None
+        # Accept only known imobiliario subcategories
+        _IMO_CATS = {"apartamentos", "moradias", "terrenos", "terrenos e quintas",
+                     "lojas, escritórios e armazéns", "escritórios", "escritorios",
+                     "garagens", "quartos", "prédios", "predios", "modulares",
+                     "férias", "ferias"}
+        if cat_name and not any(c in cat_name for c in _IMO_CATS):
             return None
 
         # URL

@@ -142,25 +142,26 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
         base_url      = "https://www.custojusto.pt",
         scraper_class = "scrapers.custojusto.CustojustoScraper",
         category      = "classified",
-        owner_bias    = "fsbo",
-        contact_rate  = 0.70,
+        owner_bias    = "mixed",       # honest: portal heavily professionalised
+        contact_rate  = 0.30,           # lower than initial 0.70 estimate
         zones         = {
-            "Lisboa":   "lisboa/imoveis",
-            "Cascais":  "cascais/imoveis",
-            "Sintra":   "sintra/imoveis",
-            "Almada":   "almada/imoveis",
-            "Seixal":   "seixal/imoveis",
-            "Sesimbra": "sesimbra/imoveis",
+            "Lisboa":   "lisboa/imobiliario",
+            "Cascais":  "cascais/imobiliario",
+            "Sintra":   "sintra/imobiliario",
+            "Almada":   "almada/imobiliario",
+            "Seixal":   "seixal/imobiliario",
+            "Sesimbra": "sesimbra/imobiliario",
         },
-        is_active = False,
+        is_active = True,
         notes = (
-            "DISABLED 2026-05-08: scraper returns 160 garbage items per zone — "
-            "all are books, electronics, etc. from /lisboa/desporto-lazer/livros "
-            "instead of the requested /{zone}/imoveis. Cause: __NEXT_DATA__ JSON "
-            "parser reads the wrong feed. Fix requires URL-first strategy "
-            "rewrite: (1) extract listing URLs from grid, (2) fetch detail "
-            "pages, (3) parse Product JSON-LD. ~4-8h work; revisit only after "
-            "Imovirtual+OLX prove insufficient volume."
+            "FIXED 2026-05-11: URL slug was /imoveis (search-term mode that "
+            "returned mixed categories incl. livros/emprego). Real category "
+            "page is /imobiliario — now returns 40 items/page of pure "
+            "real-estate listings. owner_bias revised from 'fsbo' to "
+            "'mixed' because live inspection shows pages 1-10 are 100% "
+            "agency-posted; FSBO has migrated to OLX/Facebook. Kept active "
+            "for cross-portal owner-identity confirmation (same phone "
+            "across Custojusto + OLX strengthens owner signal)."
         ),
     ),
 
