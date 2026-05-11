@@ -1255,6 +1255,15 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="morning-brief")
+def morning_brief():
+    """Gerar logs/MORNING_BRIEF.txt com o resumo da última run + top 10 leads."""
+    from reports.morning_brief import generate_morning_brief
+    path = generate_morning_brief()
+    console.print(f"[green]✓ Brief gerado: {path}[/green]")
+    console.print(f"  Abre com: cat {path} | less")
+
+
 @cli.command(name="morning-prep")
 @click.option("--no-open", is_flag=True, help="Não abrir Finder/browser no fim")
 @click.option("--top",     default=15, type=int, help="Quantos top leads para chamar hoje")

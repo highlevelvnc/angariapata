@@ -72,6 +72,9 @@ python3 main.py conversion-report --out exports/conversion_analytics.xlsx >> "$L
 say "→ 8/8 Actualizar números no demo + mapa-data.json…"
 python3 scripts/refresh_demo.py >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
 
+say "→ Morning brief (logs/MORNING_BRIEF.txt)…"
+python3 main.py morning-brief >> "$LOG" 2>&1 && say "  ✓ done" || say "  ✗ failed (non-fatal)"
+
 # ── Step 6 · Sync proposta-ptbp + push ────────────────────────────
 say "→ Final · Sync proposta-ptbp + push GitHub…"
 if [ -d "$PROP_DIR" ]; then
