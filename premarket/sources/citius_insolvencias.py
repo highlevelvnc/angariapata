@@ -64,7 +64,7 @@ log = get_logger(__name__)
 # Para reactivar quando o portal estiver estável: flip para True e
 # corre `python -c "from premarket.sources.citius_insolvencias import
 # CitiusInsolvenciasSource; print(len(CitiusInsolvenciasSource().fetch()))"`.
-_CITIUS_ENABLED = False
+_CITIUS_ENABLED = True
 
 # ── Selectors (ASP.NET form) ─────────────────────────────────────────────────
 # Validated live against citius.mj.pt 2026-05-11. The Cire page returns 404
