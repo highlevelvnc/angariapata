@@ -1255,6 +1255,24 @@ def export_commercial(
         console.print(zone_table)
 
 
+@cli.command(name="audit-trail")
+@click.option("--limit", default=10, type=int, help="Quantos leads incluir")
+def audit_trail(limit: int):
+    """Gerar audit_trail.html com fotos + URLs reais (para reuniões)."""
+    from reports.audit_trail import generate_audit
+    p = generate_audit(limit=limit)
+    console.print(f"[green]✓ Audit trail: {p}[/green]")
+    console.print("  Self-contained · podes mandar por email ou abrir local.")
+
+
+@cli.command(name="manual-susana")
+def manual_susana():
+    """Gerar PDF de 2 páginas com o workflow da Susana (manual de mesa)."""
+    from reports.manual_susana import generate_manual
+    p = generate_manual()
+    console.print(f"[green]✓ Manual gerado: {p}[/green]")
+
+
 @cli.command(name="morning-brief")
 def morning_brief():
     """Gerar logs/MORNING_BRIEF.txt com o resumo da última run + top 10 leads."""
