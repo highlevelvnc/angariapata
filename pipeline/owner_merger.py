@@ -87,16 +87,44 @@ def _name_similarity(a: str, b: str) -> float:
 
 
 def _pick_canonical_name(names: list[str]) -> str:
-    """From a group of name variants, pick the most complete one."""
-    cands = [n for n in names if n and n.strip()]
+    """
+    From a group of name variants, pick the cleanest PERSONAL name.
+
+    Sprint Owner-Merge Fix 2026-05-12: previously we picked the LONGEST
+    name, which preferred "Juliano Cavalcanti - ERA, Colinas do Cruzeiro,
+    Odivelas" over "Juliano Cavalcanti". Long names tend to be agency
+    signatures glued to the seller name — they poison the classifier
+    (presence of "ERA" → Tier E).
+
+    New ranking:
+      1. PERSONAL names (first token in PT first-name dict) come first
+      2. Among personal names, prefer shorter (cleaner)
+      3. Fall back to original length-sort only when nothing is personal
+    """
+    cands = [n.strip() for n in names if n and n.strip()]
     if not cands:
         return ""
-    # Prefer longest name with most distinct tokens
+
+    def _is_personal(n: str) -> bool:
+        try:
+            from reports.commercial_export import _is_personal_name
+            return _is_personal_name(n)
+        except Exception:
+            return False
+
+    personal = [n for n in cands if _is_personal(n)]
+    if personal:
+        # Shortest clean personal name wins — that's usually "Maria Silva",
+        # not "Maria Silva - Mediadora KW lda".
+        personal.sort(key=lambda n: (len(n.split()), len(n)))
+        return personal[0]
+
+    # No personal names found — fall back to longest (current behaviour)
     cands.sort(
         key=lambda n: (len(set(_normalise(n).split())), len(n.strip())),
         reverse=True,
     )
-    return cands[0].strip()
+    return cands[0]
 
 
 # ── Migration ────────────────────────────────────────────────────────────────

@@ -1404,13 +1404,21 @@ def scrape_fb(zones: str):
     if not _check_cookies():
         console.print("[red]✗ Sem cookies — corre `fb-login` primeiro[/red]")
         return
+    from pipeline.runner import PipelineRunner
     zone_list = [z.strip() for z in zones.split(",")] if zones else None
     scraper = FacebookMarketplaceScraper()
     console.print(f"[cyan]A correr FB Marketplace · zones={zone_list or 'default'}[/cyan]")
     result = scraper.run(zones=zone_list)
+    # Persist raw listings — without this step the items stay in memory only
+    runner = PipelineRunner()
+    saved = runner._persist_raw(result.items, "facebook_marketplace", result.batch_id)
     console.print(
-        f"[green]✓ Done[/green] · {len(result.items)} listings · {len(result.errors)} erros"
+        f"[green]✓ Done[/green] · {len(result.items)} listings · "
+        f"[green]{saved} persistidos[/green] · {len(result.errors)} erros"
     )
+    if saved:
+        console.print("  Corre `python main.py process --source facebook_marketplace` "
+                      "para promover para Lead.")
 
 
 @cli.command(name="merge-owners")
