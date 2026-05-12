@@ -325,7 +325,10 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
         name          = "Facebook Marketplace — Property",
         base_url      = "https://www.facebook.com/marketplace",
         scraper_class = "scrapers.facebook_marketplace.FacebookMarketplaceScraper",
-        category      = "social",
+        # Was "social" — moved to "marketplace" 2026-05-12 so it enters the
+        # default auto-selected sources (the runner already gates by cookie
+        # presence in `_LOGIN_GATED`, so this is safe even without login).
+        category      = "marketplace",
         owner_bias    = "fsbo",
         contact_rate  = 0.20,                # contact only via Messenger DM
         zones         = {
