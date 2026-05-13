@@ -1538,6 +1538,97 @@ def generate_cards(top: int, tiers: str):
         console.print(f"  Último:   {paths[-1]}")
 
 
+@cli.command(name="telegram-setup")
+def telegram_setup():
+    """Wizard para configurar notificações Telegram (1× setup, 2 min)."""
+    import os
+    from pathlib import Path
+    console.print("[bold cyan]═══ Telegram Setup Wizard ═══[/bold cyan]\n")
+    console.print("[yellow]Passo 1:[/yellow] Cria um bot")
+    console.print("  → Abre Telegram · procura [bold]@BotFather[/bold] · /newbot")
+    console.print("  → Dá um nome (ex: 'Pata Brava Alerts') e username")
+    console.print("  → Copia o [bold]token[/bold] que aparece (formato 123456:ABC-DEF...)\n")
+    token = click.prompt("Cola o token aqui").strip()
+
+    console.print("\n[yellow]Passo 2:[/yellow] Descobrir o teu chat_id")
+    console.print("  → Procura [bold]@userinfobot[/bold] no Telegram · /start")
+    console.print("  → Copia o ID que aparece (números)\n")
+    chat_id = click.prompt("Cola o teu chat_id aqui").strip()
+
+    # Test message
+    console.print("\n[cyan]A testar...[/cyan]")
+    import requests
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": "✅ Pata Brava · Telegram configurado!"},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            console.print(f"[red]✗ Erro: {r.text[:200]}[/red]")
+            return
+    except Exception as e:
+        console.print(f"[red]✗ Erro de rede: {e}[/red]")
+        return
+
+    # Save to .env (append/update)
+    env_path = Path(".env")
+    lines = []
+    if env_path.exists():
+        lines = [l for l in env_path.read_text().splitlines()
+                 if not l.startswith(("TELEGRAM_BOT_TOKEN=", "TELEGRAM_CHAT_ID=", "ALERT_TELEGRAM_ENABLED="))]
+    lines.append(f"ALERT_TELEGRAM_ENABLED=true")
+    lines.append(f"TELEGRAM_BOT_TOKEN={token}")
+    lines.append(f"TELEGRAM_CHAT_ID={chat_id}")
+    env_path.write_text("\n".join(lines) + "\n")
+    console.print(f"[green]✓ Guardado em {env_path}[/green]")
+    console.print("[green]✓ Mensagem de teste enviada — confirma no Telegram.[/green]")
+    console.print("\n  Próxima run automática vai enviar:")
+    console.print("    - Alertas HOT em tempo real")
+    console.print("    - Resumo diário com top 20 leads")
+    console.print("    - Avisos de price drop")
+
+
+@cli.command(name="telegram-test")
+def telegram_test():
+    """Envia mensagem teste para verificar config Telegram."""
+    from alerts.notifier import Notifier
+    from config.settings import settings
+    if not settings.alert_telegram_enabled:
+        console.print("[red]✗ alert_telegram_enabled=False · corre `telegram-setup` primeiro[/red]")
+        return
+    n = Notifier()
+    ok = n._send_telegram(
+        "🧪 <b>Pata Brava · Test</b>\n\n"
+        "Se vês isto, as notificações estão a funcionar.\n"
+        "Próxima run nocturna envia o resumo diário."
+    )
+    if ok:
+        console.print("[green]✓ Mensagem enviada — verifica no Telegram[/green]")
+    else:
+        console.print("[red]✗ Falhou — vê o log[/red]")
+
+
+@cli.command(name="telegram-brief")
+def telegram_brief():
+    """Envia o morning brief actual para o Telegram."""
+    from alerts.notifier import Notifier
+    from config.settings import settings
+    from pathlib import Path
+    if not settings.alert_telegram_enabled:
+        console.print("[red]✗ Telegram off · corre `telegram-setup`[/red]")
+        return
+    brief_path = Path("logs/MORNING_BRIEF.txt")
+    if not brief_path.exists():
+        console.print("[yellow]Sem MORNING_BRIEF.txt · a gerar...[/yellow]")
+        from reports.morning_brief import generate_morning_brief
+        generate_morning_brief()
+    text = brief_path.read_text()[:3900]  # Telegram limit 4096
+    n = Notifier()
+    ok = n._send_telegram(f"<pre>{text}</pre>")
+    console.print("[green]✓ Brief enviado[/green]" if ok else "[red]✗ Falhou[/red]")
+
+
 @cli.command(name="import-leads")
 @click.argument("path")
 @click.option("--pattern",  default=None,  help="Glob pattern para múltiplos ficheiros (ex: 'contactos_*.csv')")

@@ -79,7 +79,18 @@ class Settings(BaseSettings):
         #   Grandola → cobre Comporta + Melides (municipality slug)
         #   Ericeira → sub-Mafra com nome próprio nos portais
         #   Costa-da-Caparica → sub-Almada
-        "Grandola,Ericeira,Costa-da-Caparica"
+        "Grandola,Ericeira,Costa-da-Caparica,"
+        # Tier 2 Algarve (Sprint 2026-05-13 evening):
+        # Maior % FSBO porque mercado tem menos broker saturation que Lisboa.
+        # Compradores estrangeiros activos · €€€ médio acima de €400k.
+        "Faro,Loule,Albufeira,Lagos,Portimao,Tavira,Olhao,"
+        # Tier 2 Porto metro (Sprint 2026-05-13):
+        # 2ª maior cidade, mercado próprio, geralmente menos saturado por
+        # agências corporativas (mais agências locais que cortamos via
+        # corp markers).
+        "Porto,Vila-Nova-de-Gaia,Matosinhos,Maia,Gondomar,Valongo,"
+        # Tier 3 Centro & Norte (Sprint 2026-05-13):
+        "Coimbra,Aveiro,Leiria,Braga,Guimaraes,Viana-do-Castelo"
     )
 
     @property

@@ -48,6 +48,12 @@ class CustojustoScraper(BaseScraper):
         "barreiro", "montijo", "palmela", "setubal", "moita", "alcochete",
         # Tier 1 luxury getaway (Sprint 2026-05-13)
         "grandola", "ericeira", "costa-da-caparica",
+        # Tier 2 Algarve (Sprint 2026-05-13 evening)
+        "faro", "loule", "albufeira", "lagos", "portimao", "tavira", "olhao",
+        # Tier 2 Porto metro
+        "porto", "vila-nova-de-gaia", "matosinhos", "maia", "gondomar", "valongo",
+        # Tier 3 Centro & Norte
+        "coimbra", "aveiro", "leiria", "braga", "guimaraes", "viana-do-castelo",
     )
     _ZONE_KEYS: dict[str, str] = {
         "Lisboa": "lisboa", "Cascais": "cascais", "Sintra": "sintra",
@@ -61,6 +67,28 @@ class CustojustoScraper(BaseScraper):
         "Grandola":          "grandola",
         "Ericeira":          "ericeira",
         "Costa-da-Caparica": "costa-da-caparica",
+        # Tier 2 Algarve
+        "Faro":              "faro",
+        "Loule":             "loule",
+        "Albufeira":         "albufeira",
+        "Lagos":             "lagos",
+        "Portimao":          "portimao",
+        "Tavira":            "tavira",
+        "Olhao":             "olhao",
+        # Tier 2 Porto metro
+        "Porto":             "porto",
+        "Vila-Nova-de-Gaia": "vila-nova-de-gaia",
+        "Matosinhos":        "matosinhos",
+        "Maia":              "maia",
+        "Gondomar":          "gondomar",
+        "Valongo":           "valongo",
+        # Tier 3 Centro & Norte
+        "Coimbra":           "coimbra",
+        "Aveiro":            "aveiro",
+        "Leiria":            "leiria",
+        "Braga":             "braga",
+        "Guimaraes":         "guimaraes",
+        "Viana-do-Castelo":  "viana-do-castelo",
     }
     # Sprint Custojusto Bugfix 2026-05: slug fix
     # ---------------------------------------------------------------------

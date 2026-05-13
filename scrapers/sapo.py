@@ -59,6 +59,28 @@ class SapoScraper(BaseScraper):
         "Grandola":          "grandola",
         "Ericeira":          "ericeira",
         "Costa-da-Caparica": "costa-da-caparica",
+        # Tier 2 Algarve
+        "Faro":              "faro",
+        "Loule":             "loule",
+        "Albufeira":         "albufeira",
+        "Lagos":             "lagos",
+        "Portimao":          "portimao",
+        "Tavira":            "tavira",
+        "Olhao":             "olhao",
+        # Tier 2 Porto metro
+        "Porto":             "porto",
+        "Vila-Nova-de-Gaia": "vila-nova-de-gaia",
+        "Matosinhos":        "matosinhos",
+        "Maia":              "maia",
+        "Gondomar":          "gondomar",
+        "Valongo":           "valongo",
+        # Tier 3 Centro & Norte
+        "Coimbra":           "coimbra",
+        "Aveiro":            "aveiro",
+        "Leiria":            "leiria",
+        "Braga":             "braga",
+        "Guimaraes":         "guimaraes",
+        "Viana-do-Castelo":  "viana-do-castelo",
     }
 
     # Property categories to scrape per zone

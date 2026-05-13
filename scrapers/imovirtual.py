@@ -148,9 +148,31 @@ ZONE_PATHS: dict[str, str] = {
     "Alcochete": "setubal/alcochete",
 
     # Tier 1 luxury getaway (Sprint 2026-05-13)
-    "Grandola":          "setubal/grandola",        # cobre Comporta + Melides
-    "Ericeira":          "lisboa/mafra/ericeira",   # freguesia de Mafra
+    "Grandola":          "setubal/grandola",
+    "Ericeira":          "lisboa/mafra/ericeira",
     "Costa-da-Caparica": "setubal/almada/costa-da-caparica",
+    # Tier 2 Algarve
+    "Faro":              "faro/faro",
+    "Loule":             "faro/loule",
+    "Albufeira":         "faro/albufeira",
+    "Lagos":             "faro/lagos",
+    "Portimao":          "faro/portimao",
+    "Tavira":            "faro/tavira",
+    "Olhao":             "faro/olhao",
+    # Tier 2 Porto metro
+    "Porto":             "porto/porto",
+    "Vila-Nova-de-Gaia": "porto/vila-nova-de-gaia",
+    "Matosinhos":        "porto/matosinhos",
+    "Maia":              "porto/maia",
+    "Gondomar":          "porto/gondomar",
+    "Valongo":           "porto/valongo",
+    # Tier 3 Centro & Norte
+    "Coimbra":           "coimbra/coimbra",
+    "Aveiro":            "aveiro/aveiro",
+    "Leiria":            "leiria/leiria",
+    "Braga":             "braga/braga",
+    "Guimaraes":         "braga/guimaraes",
+    "Viana-do-Castelo":  "viana-do-castelo/viana-do-castelo",
 }
 
 # Rental paths — mirror of ZONE_PATHS; both dicts use identical slugs.
