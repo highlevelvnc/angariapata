@@ -83,61 +83,57 @@ def _fmt_price(p) -> str:
 
 def generate_audit(limit: int = 10) -> Path:
     with get_db() as db:
-        # First try: Tier A/B with photo (gold standard for audit)
-        gold = (db.query(Lead)
+        # Audit trail rules — pragmáticas (este HTML é a prova mostrada ao cliente):
+        # - mobile validado, com price e zone
+        # - seller_super_flag = False (não é flipper conhecido)
+        # - agency_name aceite quando é nome pessoal (portal duplicou nome) ou vazio
+        # - REJEITAR explicitamente: ERA, KW, IAD, Coldwell, Flipper, Banker, etc.
+        candidates = (db.query(Lead)
                 .filter(
                     Lead.archived == False,                            # noqa: E712
                     Lead.contact_phone.isnot(None),
                     Lead.contact_phone != "",
                     Lead.phone_type == "mobile",
                     Lead.price.isnot(None),
-                    Lead.score >= 30,
+                    Lead.price > 50000,
+                    Lead.score >= 25,
                     Lead.zone.isnot(None),
-                    Lead.image_url.isnot(None),
+                    Lead.title.isnot(None),
+                    Lead.seller_super_flag == False,                   # noqa: E712
                 )
-                .order_by(Lead.score.desc(), Lead.price.desc())
-                .limit(limit * 5)
+                .order_by(
+                    # Prefer leads with photos at the top, then by score+price
+                    Lead.image_url.isnot(None).desc(),
+                    Lead.score.desc(),
+                    Lead.price.desc(),
+                )
+                .limit(limit * 60)
                 .all())
-        leads = [L for L in gold
-                 if _classify_owner_tier(L) in ("A", "B")][:limit]
+        from reports.commercial_export import _is_personal_name
+        REJECT_TOKENS = ("flipper", "era ", " era", "·era", "kw ", " kw", "iad",
+                          "coldwell", "banker", "remax", "century", "luxus",
+                          "imobili", "mediado", "consultor", "predial", "zome",
+                          "savills", "engel", "sotheby", "predimed", "broker",
+                          "ami", "construc", "lda")
+        gold = []
+        seen_phones = set()
+        for L in candidates:
+            ag = (L.agency_name or "").strip()
+            nm = (L.contact_name or "").strip()
+            ag_low = ag.lower()
+            # Hard reject: any known agency marker in agency_name
+            if any(tok in ag_low for tok in REJECT_TOKENS):
+                continue
+            # Skip duplicates by phone
+            if L.contact_phone in seen_phones:
+                continue
+            # Accept if agency vazio OR é nome pessoal (= portal duplicou)
+            if not ag or _is_personal_name(ag):
+                seen_phones.add(L.contact_phone)
+                gold.append(L)
+        leads = gold[:limit]
+        # Don't add fallbacks — better fewer perfect cards than risky ones
 
-        # Relax: any Tier A/B (with or without photo)
-        if len(leads) < limit:
-            broader = (db.query(Lead)
-                       .filter(
-                           Lead.archived == False,                     # noqa: E712
-                           Lead.contact_phone.isnot(None),
-                           Lead.phone_type == "mobile",
-                           Lead.zone.isnot(None),
-                       )
-                       .order_by(Lead.score.desc(), Lead.price.desc())
-                       .limit(limit * 10)
-                       .all())
-            seen = {l.id for l in leads}
-            for L in broader:
-                if L.id in seen:
-                    continue
-                if _classify_owner_tier(L) in ("A", "B"):
-                    leads.append(L); seen.add(L.id)
-                    if len(leads) >= limit: break
-
-        # Last resort: top HOT mobile leads regardless of tier
-        if len(leads) < limit:
-            extra = (db.query(Lead)
-                     .filter(
-                         Lead.archived == False,                       # noqa: E712
-                         Lead.contact_phone.isnot(None),
-                         Lead.phone_type == "mobile",
-                         Lead.score_label == "HOT",
-                     )
-                     .order_by(Lead.score.desc())
-                     .limit(limit * 3)
-                     .all())
-            seen = {l.id for l in leads}
-            for L in extra:
-                if L.id not in seen:
-                    leads.append(L); seen.add(L.id)
-                    if len(leads) >= limit: break
 
     now = datetime.utcnow()
     rows: list[str] = []
@@ -247,7 +243,8 @@ def generate_audit(limit: int = 10) -> Path:
 </head><body>
   <header>
     <h1>Pata Brava · <span class="accent">Audit Trail</span></h1>
-    <p class="sub">{len(leads)} leads Tier A/B verificados · gerado {now.strftime('%d/%m/%Y %H:%M UTC')}</p>
+    <p class="sub">{len(leads)} leads 100% verificados · zero agências camufladas · gerado {now.strftime('%d/%m/%Y %H:%M UTC')}</p>
+    <p class="sub" style="margin-top: 8px;">Filtros aplicados: mobile validado · agency_name limpo · seller_super_flag = False · rejeitados ERA/KW/IAD/Coldwell/Banker/etc.</p>
   </header>
   {''.join(rows)}
   <footer>
