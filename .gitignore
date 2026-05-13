@@ -87,3 +87,6 @@ data/backups/
 data/directriz_cliente_*.xlsx
 data/lead_cards/
 data/photos/
+
+# Telegram bot token, secrets
+.env
