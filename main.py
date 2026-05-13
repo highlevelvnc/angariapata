@@ -1538,6 +1538,21 @@ def generate_cards(top: int, tiers: str):
         console.print(f"  Último:   {paths[-1]}")
 
 
+@cli.command(name="telegram-bot")
+def telegram_bot_cmd():
+    """Inicia o bot Telegram interactivo (long-polling · bloqueia até Ctrl-C).
+
+    Comandos disponíveis no bot: /kpi /top /tier /zona /lead /reengage
+    /premarket /buscar /brief /help
+
+    Para correr em background: nohup python3 main.py telegram-bot > logs/bot.log 2>&1 &
+    """
+    from bots.telegram_bot import run_bot
+    console.print("[cyan]A iniciar bot Telegram (long-polling)…[/cyan]")
+    console.print("[dim]Ctrl-C para parar. Para background: nohup python3 main.py telegram-bot > logs/bot.log 2>&1 &[/dim]\n")
+    run_bot()
+
+
 @cli.command(name="telegram-setup")
 def telegram_setup():
     """Wizard para configurar notificações Telegram (1× setup, 2 min)."""
