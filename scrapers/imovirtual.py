@@ -146,6 +146,11 @@ ZONE_PATHS: dict[str, str] = {
     "Setubal":  "setubal/setubal",
     "Moita":    "setubal/moita",
     "Alcochete": "setubal/alcochete",
+
+    # Tier 1 luxury getaway (Sprint 2026-05-13)
+    "Grandola":          "setubal/grandola",        # cobre Comporta + Melides
+    "Ericeira":          "lisboa/mafra/ericeira",   # freguesia de Mafra
+    "Costa-da-Caparica": "setubal/almada/costa-da-caparica",
 }
 
 # Rental paths — mirror of ZONE_PATHS; both dicts use identical slugs.

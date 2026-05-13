@@ -73,6 +73,10 @@ ZONE_LOCATION_IDS: dict[str, str] = {
     "Almada":   "almada",
     "Seixal":   "seixal",
     "Porto":    "porto",
+    # Tier 1 luxury getaway (Sprint 2026-05-13)
+    "Grandola":          "grandola",
+    "Ericeira":          "ericeira",
+    "Costa-da-Caparica": "costa-da-caparica",
 }
 
 # Radius is no longer a query param in the slug URL — kept for backward

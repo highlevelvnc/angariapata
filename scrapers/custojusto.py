@@ -46,6 +46,8 @@ class CustojustoScraper(BaseScraper):
         "lisboa", "cascais", "sintra", "almada", "seixal", "sesimbra",
         "oeiras", "amadora", "loures", "odivelas", "vila-franca-de-xira", "mafra",
         "barreiro", "montijo", "palmela", "setubal", "moita", "alcochete",
+        # Tier 1 luxury getaway (Sprint 2026-05-13)
+        "grandola", "ericeira", "costa-da-caparica",
     )
     _ZONE_KEYS: dict[str, str] = {
         "Lisboa": "lisboa", "Cascais": "cascais", "Sintra": "sintra",
@@ -55,6 +57,10 @@ class CustojustoScraper(BaseScraper):
         "Mafra": "mafra", "Barreiro": "barreiro", "Montijo": "montijo",
         "Palmela": "palmela", "Setubal": "setubal", "Moita": "moita",
         "Alcochete": "alcochete",
+        # Tier 1 luxury getaway (Sprint 2026-05-13)
+        "Grandola":          "grandola",
+        "Ericeira":          "ericeira",
+        "Costa-da-Caparica": "costa-da-caparica",
     }
     # Sprint Custojusto Bugfix 2026-05: slug fix
     # ---------------------------------------------------------------------

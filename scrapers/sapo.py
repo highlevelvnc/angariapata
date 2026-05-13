@@ -55,6 +55,10 @@ class SapoScraper(BaseScraper):
         "Setubal":   "setubal",
         "Moita":     "moita",
         "Alcochete": "alcochete",
+        # Tier 1 luxury getaway (Sprint 2026-05-13)
+        "Grandola":          "grandola",
+        "Ericeira":          "ericeira",
+        "Costa-da-Caparica": "costa-da-caparica",
     }
 
     # Property categories to scrape per zone

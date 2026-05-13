@@ -74,7 +74,12 @@ class Settings(BaseSettings):
         "Lisboa-Santa-Clara,Lisboa-Santa-Maria-Maior,Lisboa-Santo-Antonio,"
         "Lisboa-Sao-Domingos-de-Benfica,Lisboa-Sao-Vicente,"
         "Cascais,Sintra,Oeiras,Amadora,Loures,Odivelas,Mafra,"
-        "Almada,Seixal,Sesimbra,Barreiro,Montijo,Setubal"
+        "Almada,Seixal,Sesimbra,Barreiro,Montijo,Setubal,"
+        # Tier 1 luxury getaway (Sprint 2026-05-13):
+        #   Grandola → cobre Comporta + Melides (municipality slug)
+        #   Ericeira → sub-Mafra com nome próprio nos portais
+        #   Costa-da-Caparica → sub-Almada
+        "Grandola,Ericeira,Costa-da-Caparica"
     )
 
     @property

@@ -120,6 +120,11 @@ ZONE_SLUGS: dict[str, str] = {
     "Setubal":   "setubal",
     "Moita":     "moita",
     "Alcochete": "alcochete",
+
+    # ── Tier 1 luxury getaway (Sprint 2026-05-13) ─────────────────────────
+    "Grandola":          "grandola",          # cobre Comporta + Melides
+    "Ericeira":          "ericeira",
+    "Costa-da-Caparica": "costa-da-caparica",
 }
 
 # Set False to disable rental scraping (e.g. during recovery / testing)
