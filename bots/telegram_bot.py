@@ -60,13 +60,38 @@ def _api(token: str, method: str, **params) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def _send(token: str, chat_id: int, text: str, parse: str = "HTML") -> None:
-    # Chunk for Telegram 4096 limit
+def _send(token: str, chat_id: int, text: str, parse: str = "HTML",
+          keyboard: Optional[list] = None) -> None:
+    """Send a text message. Optionally with an inline keyboard."""
     while text:
         chunk, text = text[:MAX_MSG_LEN], text[MAX_MSG_LEN:]
-        _api(token, "sendMessage",
-             chat_id=chat_id, text=chunk, parse_mode=parse,
-             disable_web_page_preview=True)
+        payload = dict(
+            chat_id=chat_id, text=chunk, parse_mode=parse,
+            disable_web_page_preview=True,
+        )
+        if keyboard and not text:  # attach keyboard only to last chunk
+            payload["reply_markup"] = {"inline_keyboard": keyboard}
+        _api(token, "sendMessage", **payload)
+
+
+def _send_doc(token: str, chat_id: int, file_path: str,
+              caption: str = "") -> None:
+    """Send a file (PDF/XLSX/etc) as a document."""
+    from pathlib import Path
+    p = Path(file_path)
+    if not p.exists():
+        _send(token, chat_id, f"⚠ Ficheiro não existe: {p.name}")
+        return
+    url = API_BASE.format(token=token) + "/sendDocument"
+    with open(p, "rb") as f:
+        try:
+            requests.post(url, data={
+                "chat_id": chat_id, "caption": caption[:1000],
+                "parse_mode": "HTML",
+            }, files={"document": (p.name, f)}, timeout=60)
+        except Exception as e:
+            log.error("[tg_bot] sendDocument failed: {e}", e=e)
+            _send(token, chat_id, f"⚠ Erro a enviar {p.name}: {e}")
 
 
 # ── Formatters ───────────────────────────────────────────────────────────────
@@ -114,16 +139,24 @@ def cmd_start(token: str, chat_id: int, args: list[str]) -> None:
 
 def cmd_help(token: str, chat_id: int, args: list[str]) -> None:
     msg = (
-        "<b>Comandos disponíveis</b>\n\n"
-        "/kpi            KPIs da base (total · HOT · Tier A+B · premarket)\n"
-        "/top            Top 10 Tier A/B para chamar hoje\n"
-        "/tier A|B|C|D   Leads de um tier específico (até 15)\n"
-        "/zona &lt;nome&gt;     Leads de uma zona (ex: /zona Cascais)\n"
-        "/lead &lt;id&gt;       Briefing completo + opening WhatsApp\n"
-        "/reengage       Fila de re-engagement (30d+)\n"
-        "/premarket      Sinais premarket por tipo\n"
-        "/buscar &lt;termo&gt;  Procurar por nome ou telefone\n"
-        "/brief          Resumo da manhã (MORNING_BRIEF)"
+        "<b>📚 Comandos disponíveis</b>\n\n"
+        "<b>━ Leads ━</b>\n"
+        "/top             Top 10 Tier A/B para chamar\n"
+        "/tier A|B|C|D    Leads de um tier (até 15)\n"
+        "/zona &lt;nome&gt;     ex: /zona Cascais\n"
+        "/lead &lt;id&gt;       Dossier completo + WhatsApp\n"
+        "/buscar &lt;termo&gt;  Procurar por nome/telefone\n"
+        "/reengage        Fila de re-engagement (30d+)\n\n"
+        "<b>━ Relatórios ━</b>\n"
+        "/kpi             KPIs do dia (com botões)\n"
+        "/relatorio       Relatório completo · por zona/source/tier\n"
+        "/premarket       Sinais premarket por tipo\n"
+        "/brief           MORNING_BRIEF.txt\n\n"
+        "<b>━ Ficheiros (envia documentos) ━</b>\n"
+        "/xlsx            Lista comercial (XLSX 5 folhas)\n"
+        "/cards [id]      PDF cards · todos ou de um lead\n"
+        "/audit           Audit Trail HTML\n"
+        "/manual          Manual da Susana PDF"
     )
     _send(token, chat_id, msg)
 
@@ -133,6 +166,8 @@ def cmd_kpi(token: str, chat_id: int, args: list[str]) -> None:
         total = db.query(Lead).filter(Lead.archived == False).count()  # noqa: E712
         hot = db.query(Lead).filter(
             Lead.archived == False, Lead.score_label == "HOT").count()
+        warm = db.query(Lead).filter(
+            Lead.archived == False, Lead.score_label == "WARM").count()
         mobile = db.query(Lead).filter(
             Lead.archived == False, Lead.phone_type == "mobile").count()
         leads = db.query(Lead).filter(
@@ -140,23 +175,192 @@ def cmd_kpi(token: str, chat_id: int, args: list[str]) -> None:
             Lead.phone_type == "mobile").all()
         ab = sum(1 for L in leads if _classify_owner_tier(L) in ("A", "B"))
         premkt = db.query(PremktSignal).count()
-        # Re-engagement count
         now = datetime.utcnow()
         re_eng = db.query(Lead).filter(
             Lead.archived == False,
             Lead.re_engage_after.isnot(None),
             Lead.re_engage_after <= now).count()
 
+    def _n(x): return f"{x:,}".replace(",", " ")
     msg = (
-        f"📊 <b>KPIs · {datetime.utcnow().strftime('%d/%m %H:%M UTC')}</b>\n\n"
-        f"Total leads activos   <b>{total:,}</b>\n".replace(",", " ")
-        + f"Com telemóvel mobile  <b>{mobile:,}</b>\n".replace(",", " ")
-        + f"HOT (score ≥ 60)      <b>{hot:,}</b>\n".replace(",", " ")
-        + f"Tier A+B verificados  <b>{ab}</b>\n"
-        f"Re-engagement hoje    <b>{re_eng}</b>\n"
-        f"Sinais premarket      <b>{premkt:,}</b>".replace(",", " ")
+        f"📊 <b>PATA BRAVA · KPIs</b>\n"
+        f"<i>{datetime.utcnow().strftime('%d/%m/%Y · %H:%M UTC')}</i>\n\n"
+        f"<pre>"
+        f"┌─────────────────────────────┐\n"
+        f"│  COBERTURA                  │\n"
+        f"├─────────────────────────────┤\n"
+        f"│  Total leads      {_n(total):>10s}│\n"
+        f"│  Mobile           {_n(mobile):>10s}│\n"
+        f"├─────────────────────────────┤\n"
+        f"│  CLASSIFICAÇÃO              │\n"
+        f"├─────────────────────────────┤\n"
+        f"│  HOT  (≥60)       {_n(hot):>10s}│\n"
+        f"│  WARM (≥40)       {_n(warm):>10s}│\n"
+        f"│  Tier A+B real    {_n(ab):>10s}│\n"
+        f"├─────────────────────────────┤\n"
+        f"│  WORKFLOW                   │\n"
+        f"├─────────────────────────────┤\n"
+        f"│  Re-engage hoje   {_n(re_eng):>10s}│\n"
+        f"│  Premarket sinais {_n(premkt):>10s}│\n"
+        f"└─────────────────────────────┘"
+        f"</pre>"
     )
-    _send(token, chat_id, msg)
+    kb = [[
+        {"text": "📞 Top 10", "callback_data": "/top"},
+        {"text": "🔄 Re-engage", "callback_data": "/reengage"},
+    ], [
+        {"text": "📡 Premarket", "callback_data": "/premarket"},
+        {"text": "📋 Relatório", "callback_data": "/relatorio"},
+    ]]
+    _send(token, chat_id, msg, keyboard=kb)
+
+
+def cmd_relatorio(token: str, chat_id: int, args: list[str]) -> None:
+    """Relatório completo + opção de receber XLSX."""
+    from collections import Counter
+    with get_db() as db:
+        total = db.query(Lead).filter(Lead.archived == False).count()
+        hot = db.query(Lead).filter(
+            Lead.archived == False, Lead.score_label == "HOT").count()
+        # By source
+        from sqlalchemy import func
+        by_src = dict(db.query(Lead.discovery_source, func.count(Lead.id))
+                      .filter(Lead.archived == False)
+                      .group_by(Lead.discovery_source).all())
+        # By zone (top 8)
+        by_zone = (db.query(Lead.zone, func.count(Lead.id))
+                   .filter(Lead.archived == False,
+                           Lead.zone.isnot(None))
+                   .group_by(Lead.zone)
+                   .order_by(func.count(Lead.id).desc())
+                   .limit(8).all())
+        # Tier breakdown
+        leads = db.query(Lead).filter(
+            Lead.archived == False, Lead.contact_phone.isnot(None),
+            Lead.phone_type == "mobile").all()
+        tiers = Counter(_classify_owner_tier(L) for L in leads)
+        premkt_total = db.query(PremktSignal).count()
+        premkt_by = dict(db.query(PremktSignal.signal_type,
+                                    func.count(PremktSignal.id))
+                         .group_by(PremktSignal.signal_type).all())
+
+    def _n(x): return f"{x:,}".replace(",", " ")
+
+    msg = (
+        f"📋 <b>RELATÓRIO COMPLETO</b>\n"
+        f"<i>{datetime.utcnow().strftime('%d/%m/%Y · %H:%M UTC')}</i>\n\n"
+        f"<b>━━━ COBERTURA ━━━</b>\n"
+        f"<pre>"
+        f"Total leads:    {_n(total)}\n"
+        f"HOT (≥60):      {_n(hot)}"
+        f"</pre>\n"
+        f"<b>━━━ POR SOURCE ━━━</b>\n<pre>"
+    )
+    for src, n in sorted(by_src.items(), key=lambda x: -x[1])[:10]:
+        if src:
+            msg += f"{(src or '—')[:18]:18s}{_n(n):>8s}\n"
+    msg += "</pre>\n"
+
+    msg += "<b>━━━ TOP ZONAS ━━━</b>\n<pre>"
+    for zone, n in by_zone:
+        z = _short_zone(zone) or "—"
+        msg += f"{z[:20]:20s}{_n(n):>6s}\n"
+    msg += "</pre>\n"
+
+    msg += "<b>━━━ TIER (mobile) ━━━</b>\n<pre>"
+    for t in ("A", "B", "C", "D", "E", "?"):
+        if tiers.get(t):
+            msg += f"Tier {t}: {_n(tiers[t])}\n"
+    msg += "</pre>\n"
+
+    msg += f"<b>━━━ PREMARKET · {premkt_total} sinais ━━━</b>\n<pre>"
+    labels = {
+        "building_permit":         "🏗  Licença obras",
+        "renovation_ad_homeowner": "🔨 Renovação dono",
+        "renovation_ad_generic":   "🔧 Renovação",
+        "distressed_stale":        "❄  Listing frio",
+        "distressed_cross_portal": "🔗 Multi-portal",
+        "distressed_portfolio":    "📊 Portfolio 3-4",
+        "linkedin_city_change":    "✈  Mudança cidade",
+        "linkedin_job_change":     "💼 Mudança job",
+    }
+    for sig, n in sorted(premkt_by.items(), key=lambda x: -x[1]):
+        lbl = labels.get(sig, sig)[:22]
+        msg += f"{lbl:22s}{_n(n):>5s}\n"
+    msg += "</pre>"
+
+    kb = [[
+        {"text": "📥 Receber XLSX", "callback_data": "/xlsx"},
+        {"text": "📥 Receber Brief", "callback_data": "/brief"},
+    ]]
+    _send(token, chat_id, msg, keyboard=kb)
+
+
+def cmd_xlsx(token: str, chat_id: int, args: list[str]) -> None:
+    """Envia o XLSX comercial mais recente."""
+    import glob, os
+    files = sorted(glob.glob("exports/leads_comercial_*.xlsx"),
+                   key=os.path.getmtime, reverse=True)
+    if not files:
+        _send(token, chat_id, "Sem XLSX gerado · corre <code>python main.py export-commercial</code>.")
+        return
+    latest = files[0]
+    fname = os.path.basename(latest)
+    cap = (f"📊 <b>Lista Comercial</b>\n"
+           f"<i>{fname}</i>\n\n"
+           f"5 folhas: Premium · Expandida · ⚠ Sem Telefone · 🔄 Re-engagement · Resumo")
+    _send_doc(token, chat_id, latest, caption=cap)
+
+
+def cmd_cards(token: str, chat_id: int, args: list[str]) -> None:
+    """Envia o PDF card de um lead específico OU os top N."""
+    import glob, os
+    if args and args[0].isdigit():
+        # Single lead PDF
+        lead_id = int(args[0])
+        pdf = f"data/lead_cards/lead_{lead_id:05d}.pdf"
+        if not os.path.exists(pdf):
+            _send(token, chat_id, f"PDF card para lead #{lead_id} não existe ainda.\nCorre <code>python main.py generate-cards</code>.")
+            return
+        _send_doc(token, chat_id, pdf,
+                  caption=f"📄 <b>Lead Card #{lead_id}</b>")
+        return
+    # All cards — send max 5 to avoid spam
+    pdfs = sorted(glob.glob("data/lead_cards/lead_*.pdf"))
+    if not pdfs:
+        _send(token, chat_id, "Sem PDFs gerados · corre <code>python main.py generate-cards</code>.")
+        return
+    _send(token, chat_id, f"📄 A enviar primeiros 5 de {len(pdfs)} cards…")
+    for p in pdfs[:5]:
+        _send_doc(token, chat_id, p)
+
+
+def cmd_audit(token: str, chat_id: int, args: list[str]) -> None:
+    """Envia o audit_trail.html."""
+    import os
+    p = "data/audit_trail.html"
+    if not os.path.exists(p):
+        _send(token, chat_id, "Sem audit trail · corre <code>python main.py audit-trail</code>.")
+        return
+    _send_doc(token, chat_id, p,
+              caption=("🔍 <b>Audit Trail</b>\n\n"
+                       "HTML self-contained · abre no browser para ver "
+                       "leads com fotos + URLs clicáveis do anúncio original."))
+
+
+def cmd_manual(token: str, chat_id: int, args: list[str]) -> None:
+    """Envia o manual da Susana."""
+    import os
+    p = "data/manual_susana.pdf"
+    if not os.path.exists(p):
+        try:
+            from reports.manual_susana import generate_manual
+            generate_manual()
+        except Exception:
+            _send(token, chat_id, "Sem manual gerado.")
+            return
+    _send_doc(token, chat_id, p,
+              caption="📖 <b>Manual da Susana</b> · workflow daily + cheat-sheet")
 
 
 def cmd_top(token: str, chat_id: int, args: list[str]) -> None:
@@ -173,14 +377,32 @@ def cmd_top(token: str, chat_id: int, args: list[str]) -> None:
         ).order_by(Lead.score.desc(), Lead.price.desc()).limit(2000).all())
     top = [L for L in candidates if _classify_owner_tier(L) in ("A", "B")][:limit]
     if not top:
-        _send(token, chat_id, "Sem leads Tier A/B novos hoje · base limpa ou aguardar próxima run.")
+        _send(token, chat_id,
+              "🟡 <b>Sem Tier A/B fresco hoje</b>\n\n"
+              "Acontece quando a base está limpa ou esperamos pela próxima "
+              "run nocturna (03:00).\n\n"
+              "Manda /reengage para a fila de re-contacto.")
         return
-    parts = [f"📞 <b>Top {len(top)} para chamar hoje</b>\n"]
+
+    parts = [f"📞 <b>TOP {len(top)} PARA CHAMAR</b>\n<i>{datetime.utcnow().strftime('%d/%m %H:%M')} UTC</i>\n\n"]
+    # Build inline keyboard with lead detail shortcuts (max 8 buttons)
+    kb_rows = []
+    row = []
     for i, L in enumerate(top, 1):
         parts.append(_lead_summary_line(L, i))
         parts.append("")
-    parts.append(f"<i>Pede /lead &lt;id&gt; para ver briefing completo.</i>")
-    _send(token, chat_id, "\n".join(parts))
+        if i <= 8:
+            row.append({"text": f"#{i}", "callback_data": f"/lead {L.id}"})
+            if len(row) == 4:
+                kb_rows.append(row); row = []
+    if row:
+        kb_rows.append(row)
+    kb_rows.append([
+        {"text": "🔄 Re-engage", "callback_data": "/reengage"},
+        {"text": "📋 Relatório", "callback_data": "/relatorio"},
+    ])
+    parts.append("<i>Toca num # para ver o dossier completo.</i>")
+    _send(token, chat_id, "\n".join(parts), keyboard=kb_rows)
 
 
 def cmd_tier(token: str, chat_id: int, args: list[str]) -> None:
@@ -394,10 +616,48 @@ COMMANDS: dict[str, Callable] = {
     "/search":    cmd_buscar,
     "/brief":     cmd_brief,
     "/morning":   cmd_brief,
+    "/relatorio": cmd_relatorio,
+    "/report":    cmd_relatorio,
+    "/xlsx":      cmd_xlsx,
+    "/cards":     cmd_cards,
+    "/audit":     cmd_audit,
+    "/manual":    cmd_manual,
 }
 
 
+def _dispatch_text(token: str, chat_id: int, text: str, who: str = "") -> None:
+    """Parse a text command and run the handler. Shared by message + callback paths."""
+    log.info("[tg_bot] chat={c} from={n} text={t}",
+             c=chat_id, n=who, t=text[:60])
+    parts = text.split()
+    cmd = parts[0].lower().split("@")[0]  # strip @BotName
+    args = parts[1:]
+    handler = COMMANDS.get(cmd)
+    if not handler:
+        if cmd.startswith("/"):
+            _send(token, chat_id, "Comando não reconhecido. Manda /help.")
+        return
+    try:
+        handler(token, chat_id, args)
+    except Exception as e:
+        log.error("[tg_bot] handler {c} crashed: {e}\n{tb}",
+                  c=cmd, e=e, tb=traceback.format_exc())
+        _send(token, chat_id, f"⚠ Erro interno: {html.escape(str(e))[:200]}")
+
+
 def _handle_update(token: str, update: dict) -> None:
+    # Inline keyboard button → callback_query
+    cq = update.get("callback_query")
+    if cq:
+        chat = (cq.get("message") or {}).get("chat", {})
+        chat_id = chat.get("id")
+        data = cq.get("data", "")
+        # Acknowledge the callback to remove the loading spinner
+        _api(token, "answerCallbackQuery", callback_query_id=cq.get("id"))
+        if chat_id and data:
+            _dispatch_text(token, chat_id, data, who=chat.get("first_name", ""))
+        return
+
     msg = update.get("message") or update.get("edited_message")
     if not msg:
         return
@@ -406,24 +666,7 @@ def _handle_update(token: str, update: dict) -> None:
     text = (msg.get("text") or "").strip()
     if not chat_id or not text:
         return
-    log.info("[tg_bot] chat={c} from={n} text={t}",
-             c=chat_id, n=chat.get("first_name", ""), t=text[:60])
-    # Parse command + args
-    parts = text.split()
-    cmd = parts[0].lower().split("@")[0]  # strip "@BotName" suffix
-    args = parts[1:]
-    handler = COMMANDS.get(cmd)
-    if not handler:
-        if cmd.startswith("/"):
-            _send(token, chat_id,
-                  "Comando não reconhecido. Manda /help para a lista.")
-        return
-    try:
-        handler(token, chat_id, args)
-    except Exception as e:
-        log.error("[tg_bot] handler {c} crashed: {e}\n{tb}",
-                  c=cmd, e=e, tb=traceback.format_exc())
-        _send(token, chat_id, f"⚠ Erro interno: {html.escape(str(e))[:200]}")
+    _dispatch_text(token, chat_id, text, who=chat.get("first_name", ""))
 
 
 # ── Main loop ───────────────────────────────────────────────────────────────
