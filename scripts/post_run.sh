@@ -152,13 +152,20 @@ EOF
 # Idealista uses DataDome enterprise. Runs LAST so failures don't impact
 # the main delivery. If it works, we re-process + re-export to include
 # the Idealista FSBO listings. If DataDome blocks, we skip silently.
-say "→ 7/7 Idealista bonus pass (FSBO-only, after main delivery)…"
+# Sprint 2026-05-13 · Idealista bonus pass DESACTIVADO
+# Razão: DataDome anti-bot bloqueia consistentemente, retries em loop
+# infinito que pendurava o post_run durante 2-3h sem nunca terminar.
+# Para reactivar quando tivermos proxy residencial / ScrapingBee:
+#   1. descomentar bloco abaixo
+#   2. ajustar timeout no scrape command
+say "→ Idealista bonus pass · DESACTIVADO (DataDome) — skip"
 
-# Snapshot raw_listings before
-RAW_BEFORE_IDEA=$(sqlite3 data/patabrava.db "SELECT COUNT(*) FROM raw_listings WHERE source='idealista';" 2>/dev/null || echo 0)
-
-# Force-run Idealista regardless of is_active flag
-IDEALISTA_FSBO_ONLY=1 python3 main.py scrape --sources idealista >> "$LOG" 2>&1 || say "  ⚠ Idealista scrape falhou (DataDome?) — continuamos"
+RAW_BEFORE_IDEA=0
+IDEALISTA_BONUS_ENABLED=0
+if [ "$IDEALISTA_BONUS_ENABLED" = "1" ]; then
+  RAW_BEFORE_IDEA=$(sqlite3 data/patabrava.db "SELECT COUNT(*) FROM raw_listings WHERE source='idealista';" 2>/dev/null || echo 0)
+  IDEALISTA_FSBO_ONLY=1 timeout 600 python3 main.py scrape --sources idealista >> "$LOG" 2>&1 || say "  ⚠ Idealista scrape falhou"
+fi
 
 RAW_AFTER_IDEA=$(sqlite3 data/patabrava.db "SELECT COUNT(*) FROM raw_listings WHERE source='idealista';" 2>/dev/null || echo 0)
 IDEA_NEW=$((RAW_AFTER_IDEA - RAW_BEFORE_IDEA))
