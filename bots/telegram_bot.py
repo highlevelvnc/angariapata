@@ -47,6 +47,10 @@ API_BASE = "https://api.telegram.org/bot{token}"
 POLL_TIMEOUT = 30
 MAX_MSG_LEN  = 4000
 
+# Admin chat_ids — only these can run /run_start, /run_stop, etc.
+# Add your chat_id here (descobre com /chatid no bot).
+ADMIN_CHAT_IDS: set[int] = {722055603}  # Vinicius
+
 
 # ── Telegram primitives ──────────────────────────────────────────────────────
 
@@ -156,7 +160,16 @@ def cmd_help(token: str, chat_id: int, args: list[str]) -> None:
         "/xlsx            Lista comercial (XLSX 5 folhas)\n"
         "/cards [id]      PDF cards · todos ou de um lead\n"
         "/audit           Audit Trail HTML\n"
-        "/manual          Manual da Susana PDF"
+        "/manual          Manual da Susana PDF\n\n"
+        "<b>━ Admin (só admin) ━</b>\n"
+        "/menu            Painel admin com botões\n"
+        "/run_start       Iniciar scrapper\n"
+        "/run_stop        Parar scrapper\n"
+        "/run_status      Status + sources persistidas\n"
+        "/run_log [N]     Últimas N linhas do log\n"
+        "/refresh         Regenerar dashboard/audit/manual/brief\n"
+        "/services        Lista serviços launchd activos\n"
+        "/chatid          O teu chat_id"
     )
     _send(token, chat_id, msg)
 
@@ -361,6 +374,282 @@ def cmd_manual(token: str, chat_id: int, args: list[str]) -> None:
             return
     _send_doc(token, chat_id, p,
               caption="📖 <b>Manual da Susana</b> · workflow daily + cheat-sheet")
+
+
+# ── ADMIN COMMANDS ──────────────────────────────────────────────────────────
+# Restritos a ADMIN_CHAT_IDS. Outros utilizadores vêem "Sem permissão".
+
+def _is_admin(chat_id: int) -> bool:
+    return chat_id in ADMIN_CHAT_IDS
+
+
+def _admin_only(handler):
+    """Decorator que rejeita chamadas de chat_ids não-admin."""
+    def wrapped(token: str, chat_id: int, args: list[str]) -> None:
+        if not _is_admin(chat_id):
+            _send(token, chat_id, "⛔ Sem permissão · este comando é só admin.")
+            return
+        handler(token, chat_id, args)
+    return wrapped
+
+
+def _run_pid() -> Optional[int]:
+    """Return PID do main.py run, ou None se não estiver a correr."""
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", "main.py run"],
+            capture_output=True, text=True, timeout=3,
+        )
+        for line in r.stdout.strip().split("\n"):
+            if line.strip().isdigit():
+                # Verify it's actually our scraper run (not e.g. import or generate)
+                ps = subprocess.run(
+                    ["ps", "-p", line.strip(), "-o", "command="],
+                    capture_output=True, text=True, timeout=2,
+                ).stdout
+                if "main.py run" in ps and "morning" not in ps and "import" not in ps:
+                    return int(line.strip())
+    except Exception:
+        pass
+    return None
+
+
+@_admin_only
+def cmd_menu(token: str, chat_id: int, args: list[str]) -> None:
+    """Menu admin com inline keyboard."""
+    pid = _run_pid()
+    status_line = (f"🟢 Scrapper a correr · PID {pid}"
+                   if pid else "⚪ Scrapper parado")
+    msg = (
+        f"⚙️ <b>MENU ADMIN</b>\n\n{status_line}\n\n"
+        "Escolhe uma acção:"
+    )
+    kb = [
+        [
+            {"text": "▶ Iniciar Scrapper",  "callback_data": "/run_start"},
+            {"text": "⏹ Parar Scrapper",    "callback_data": "/run_stop"},
+        ],
+        [
+            {"text": "📊 Status",            "callback_data": "/run_status"},
+            {"text": "📜 Log (tail)",        "callback_data": "/run_log"},
+        ],
+        [
+            {"text": "🔄 Refresh Reports",   "callback_data": "/refresh"},
+            {"text": "🛠 Services",          "callback_data": "/services"},
+        ],
+        [
+            {"text": "📊 KPIs",              "callback_data": "/kpi"},
+            {"text": "📋 Relatório",         "callback_data": "/relatorio"},
+        ],
+    ]
+    _send(token, chat_id, msg, keyboard=kb)
+
+
+@_admin_only
+def cmd_run_start(token: str, chat_id: int, args: list[str]) -> None:
+    """Inicia uma run completa do scrapper em background."""
+    import subprocess
+    from pathlib import Path
+    pid = _run_pid()
+    if pid:
+        _send(token, chat_id,
+              f"⚠ Já há uma run a correr · PID {pid}.\n"
+              f"Manda /run_stop primeiro se quiseres reiniciar.")
+        return
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    log_path = Path(f"logs/run_{stamp}.log")
+    try:
+        # Launch detached
+        with open(log_path, "w") as f:
+            proc = subprocess.Popen(
+                ["python3", "main.py", "run"],
+                stdout=f, stderr=subprocess.STDOUT,
+                cwd="/Users/highlevel/ScrapperPatabrava",
+                start_new_session=True,
+            )
+        # auto_after_run watcher
+        subprocess.Popen(
+            ["./scripts/auto_after_run.sh", str(proc.pid)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            cwd="/Users/highlevel/ScrapperPatabrava",
+            start_new_session=True,
+        )
+        _send(token, chat_id,
+              f"🚀 <b>Run lançada</b>\n\n"
+              f"PID: <code>{proc.pid}</code>\n"
+              f"Log: <code>{log_path}</code>\n"
+              f"ETA: 3-4h · post-run automático no fim.\n\n"
+              f"Manda /run_status para ver progresso.")
+    except Exception as e:
+        _send(token, chat_id, f"⚠ Falhou a lançar: {html.escape(str(e))[:200]}")
+
+
+@_admin_only
+def cmd_run_stop(token: str, chat_id: int, args: list[str]) -> None:
+    """Mata a run actual do scrapper."""
+    import subprocess
+    pid = _run_pid()
+    if not pid:
+        _send(token, chat_id, "⚪ Scrapper já está parado.")
+        return
+    try:
+        subprocess.run(["kill", "-TERM", str(pid)], timeout=5)
+        # Also kill auto_after_run
+        subprocess.run(["pkill", "-f", "auto_after_run.sh"],
+                       capture_output=True, timeout=5)
+        _send(token, chat_id,
+              f"⏹ <b>Scrapper terminado</b> · PID {pid} (SIGTERM)\n\n"
+              f"auto_after_run também parado.")
+    except Exception as e:
+        _send(token, chat_id, f"⚠ Erro: {html.escape(str(e))[:200]}")
+
+
+@_admin_only
+def cmd_run_status(token: str, chat_id: int, args: list[str]) -> None:
+    """Status detalhado da run actual."""
+    import subprocess
+    import glob, os
+    pid = _run_pid()
+    if not pid:
+        _send(token, chat_id,
+              "⚪ <b>Scrapper parado</b>\n\nManda /run_start para iniciar.")
+        return
+    # Get elapsed
+    try:
+        r = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "etime="],
+            capture_output=True, text=True, timeout=3,
+        )
+        etime = r.stdout.strip()
+    except Exception:
+        etime = "?"
+    # Find current log
+    logs = sorted(glob.glob("logs/run_*.log"), key=os.path.getmtime, reverse=True)
+    log_file = os.path.basename(logs[0]) if logs else "?"
+    # Sources completed
+    try:
+        with open(logs[0]) as f:
+            content = f.read()
+        import re
+        persisted = re.findall(r"Persisted (\d+) new raw listings from (\w+)", content)
+        sources_done = "\n".join([f"  ✓ {src}: <b>+{n}</b>" for n, src in persisted])
+        # Current activity (last source mentioned)
+        last_source = re.findall(r"--- Scraping: (\w+)", content)
+        current = last_source[-1] if last_source else "?"
+        last_lines = content.split("\n")[-2:]
+        last_line = "\n".join(l[:140] for l in last_lines if l.strip())
+    except Exception:
+        sources_done = ""
+        current = "?"
+        last_line = ""
+
+    msg = (
+        f"📊 <b>SCRAPPER ESTADO</b>\n\n"
+        f"PID: <code>{pid}</code>\n"
+        f"Elapsed: <b>{etime}</b>\n"
+        f"Log: <code>{log_file}</code>\n"
+        f"Source actual: <b>{current}</b>\n"
+    )
+    if sources_done:
+        msg += f"\n<b>Sources persistidas:</b>\n{sources_done}\n"
+    if last_line:
+        msg += f"\n<pre>{html.escape(last_line)}</pre>"
+    kb = [[
+        {"text": "📜 Tail Log", "callback_data": "/run_log"},
+        {"text": "⏹ Parar",     "callback_data": "/run_stop"},
+    ]]
+    _send(token, chat_id, msg, keyboard=kb)
+
+
+@_admin_only
+def cmd_run_log(token: str, chat_id: int, args: list[str]) -> None:
+    """Últimas linhas do log da run."""
+    import glob, os, re
+    n = 15
+    if args and args[0].isdigit():
+        n = min(int(args[0]), 50)
+    logs = sorted(glob.glob("logs/run_*.log"), key=os.path.getmtime, reverse=True)
+    if not logs:
+        _send(token, chat_id, "Sem logs.")
+        return
+    try:
+        with open(logs[0]) as f:
+            lines = f.readlines()
+        tail = lines[-n:]
+        # Strip ANSI escape codes
+        ansi = re.compile(r"\x1b\[[0-9;]*m")
+        clean = "".join(ansi.sub("", l) for l in tail)
+        # Truncate to fit Telegram
+        clean = clean[-3500:]
+        _send(token, chat_id,
+              f"📜 <b>Log · {os.path.basename(logs[0])}</b>\n\n"
+              f"<pre>{html.escape(clean)}</pre>")
+    except Exception as e:
+        _send(token, chat_id, f"Erro: {html.escape(str(e))[:200]}")
+
+
+@_admin_only
+def cmd_refresh(token: str, chat_id: int, args: list[str]) -> None:
+    """Regenera dashboard, audit_trail, manual, e morning_brief."""
+    _send(token, chat_id, "🔄 A regenerar relatórios…")
+    try:
+        from reports.morning_dashboard import generate_dashboard
+        generate_dashboard()
+        from reports.audit_trail import generate_audit
+        generate_audit(limit=10)
+        from reports.manual_susana import generate_manual
+        generate_manual()
+        from reports.morning_brief import generate_morning_brief
+        generate_morning_brief()
+        _send(token, chat_id,
+              "✅ <b>Relatórios actualizados</b>\n\n"
+              "  · dashboard.html\n"
+              "  · audit_trail.html\n"
+              "  · manual_susana.pdf\n"
+              "  · MORNING_BRIEF.txt\n\n"
+              "Manda /brief para ver o brief actualizado.")
+    except Exception as e:
+        _send(token, chat_id, f"⚠ Erro: {html.escape(str(e))[:300]}")
+
+
+@_admin_only
+def cmd_services(token: str, chat_id: int, args: list[str]) -> None:
+    """Status de todos os serviços launchd da Pata Brava."""
+    import subprocess
+    try:
+        r = subprocess.run(["launchctl", "list"],
+                           capture_output=True, text=True, timeout=5)
+        services = [l for l in r.stdout.split("\n") if "patabrava" in l.lower()]
+    except Exception as e:
+        _send(token, chat_id, f"Erro: {e}")
+        return
+    msg = "<b>🛠 SERVIÇOS</b>\n\n"
+    if not services:
+        msg += "Sem serviços patabrava activos."
+    else:
+        msg += "<pre>"
+        for s in services:
+            parts = s.split()
+            if len(parts) >= 3:
+                pid, status, label = parts[0], parts[1], parts[2]
+                emoji = "🟢" if pid != "-" else "⚪"
+                msg += f"{emoji} {label:35s} pid={pid}\n"
+        msg += "</pre>\n"
+        msg += "\n<i>com.patabrava.nightly · run automática 03:00\n"
+        msg += "com.patabrava.telegram-bot · este bot</i>"
+    scraper_pid = _run_pid()
+    if scraper_pid:
+        msg += f"\n\n🟢 Scrapper run · PID {scraper_pid}"
+    _send(token, chat_id, msg)
+
+
+def cmd_chatid(token: str, chat_id: int, args: list[str]) -> None:
+    """Devolve o teu chat_id (útil para adicionar a ADMIN_CHAT_IDS)."""
+    _send(token, chat_id,
+          f"O teu chat_id é <code>{chat_id}</code>\n\n"
+          f"Para te tornares admin, adiciona este ID a "
+          f"<code>ADMIN_CHAT_IDS</code> em <code>bots/telegram_bot.py</code>.")
 
 
 def cmd_top(token: str, chat_id: int, args: list[str]) -> None:
@@ -602,26 +891,40 @@ def cmd_brief(token: str, chat_id: int, args: list[str]) -> None:
 # ── Dispatcher ──────────────────────────────────────────────────────────────
 
 COMMANDS: dict[str, Callable] = {
-    "/start":     cmd_start,
-    "/help":      cmd_help,
-    "/kpi":       cmd_kpi,
-    "/stats":     cmd_kpi,
-    "/top":       cmd_top,
-    "/tier":      cmd_tier,
-    "/zona":      cmd_zona,
-    "/lead":      cmd_lead,
-    "/reengage":  cmd_reengage,
-    "/premarket": cmd_premarket,
-    "/buscar":    cmd_buscar,
-    "/search":    cmd_buscar,
-    "/brief":     cmd_brief,
-    "/morning":   cmd_brief,
-    "/relatorio": cmd_relatorio,
-    "/report":    cmd_relatorio,
-    "/xlsx":      cmd_xlsx,
-    "/cards":     cmd_cards,
-    "/audit":     cmd_audit,
-    "/manual":    cmd_manual,
+    "/start":      cmd_start,
+    "/help":       cmd_help,
+    "/kpi":        cmd_kpi,
+    "/stats":      cmd_kpi,
+    "/top":        cmd_top,
+    "/tier":       cmd_tier,
+    "/zona":       cmd_zona,
+    "/lead":       cmd_lead,
+    "/reengage":   cmd_reengage,
+    "/premarket":  cmd_premarket,
+    "/buscar":     cmd_buscar,
+    "/search":     cmd_buscar,
+    "/brief":      cmd_brief,
+    "/morning":    cmd_brief,
+    "/relatorio":  cmd_relatorio,
+    "/report":     cmd_relatorio,
+    "/xlsx":       cmd_xlsx,
+    "/cards":      cmd_cards,
+    "/audit":      cmd_audit,
+    "/manual":     cmd_manual,
+    # ── Admin (gated by ADMIN_CHAT_IDS) ──────────────────────────────────
+    "/menu":       cmd_menu,
+    "/admin":      cmd_menu,
+    "/run_start":  cmd_run_start,
+    "/start_run":  cmd_run_start,
+    "/run_stop":   cmd_run_stop,
+    "/stop_run":   cmd_run_stop,
+    "/run_status": cmd_run_status,
+    "/status":     cmd_run_status,
+    "/run_log":    cmd_run_log,
+    "/log":        cmd_run_log,
+    "/refresh":    cmd_refresh,
+    "/services":   cmd_services,
+    "/chatid":     cmd_chatid,
 }
 
 
