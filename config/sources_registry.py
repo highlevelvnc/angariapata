@@ -189,6 +189,7 @@ SOURCE_REGISTRY: dict[str, SourceMeta] = {
         name          = "Standvirtual",
         base_url      = "https://www.standvirtual.com",
         scraper_class = "scrapers.standvirtual.StandvirtualScraper",
+        is_active     = False,
         category      = "marketplace",
         owner_bias    = "fsbo",
         contact_rate  = 0.45,
